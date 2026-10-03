@@ -44,6 +44,8 @@
   const PITCHES = ["G5", "F5", "E5", "D5", "C5", "B4", "A4", "G4", "F4", "E4", "D4", "C4", "B3"];
   const SEQ_STEPS = 96;
   const MAX_LAYERS = 3;
+  const SECTION_LENGTH = 24;
+  const SECTION_COUNT = 4;
 
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
@@ -1088,9 +1090,13 @@
   let musicHistory = [];
   let measureEditStep = 0;
   let measureClipboard = null;
+  let selectedSection = 0;
+  let sectionNames = ["Section A", "Section B", "Section C", "Section D"];
+  let sectionClipboard = null;
   let activeMixMultiplier = 1;
+  let activeMixPan = 0;
   let instrumentMix = Object.fromEntries(
-    INSTRUMENTS.map((instrument) => [instrument.id, { volume: 1, mute: false }])
+    INSTRUMENTS.map((instrument) => [instrument.id, { volume: 1, mute: false, solo: false, pan: 0 }])
   );
 
   function makeSequence() {
@@ -1127,7 +1133,14 @@
       when + Math.min(.02, Math.max(.005, duration * .18))
     );
     gain.gain.exponentialRampToValueAtTime(0.0001, when + duration);
-    gain.connect(ac.destination);
+    if (typeof ac.createStereoPanner === "function") {
+      const panner = ac.createStereoPanner();
+      panner.pan.setValueAtTime(Math.max(-1, Math.min(1, activeMixPan)), when);
+      gain.connect(panner);
+      panner.connect(ac.destination);
+    } else {
+      gain.connect(ac.destination);
+    }
     return gain;
   }
 
@@ -1169,10 +1182,13 @@
     const start = when == null ? ac.currentTime : when;
     const instrument = instrumentById(id);
     if (!instrument) return;
-    const mix = instrumentMix[id] || { volume: 1, mute: false };
-    if (mix.mute || Number(mix.volume) <= 0) return;
+    const mix = instrumentMix[id] || { volume: 1, mute: false, solo: false, pan: 0 };
+    const anySolo = Object.values(instrumentMix).some((entry) => entry && entry.solo);
+    if (mix.mute || (anySolo && !mix.solo) || Number(mix.volume) <= 0) return;
     const previousMixMultiplier = activeMixMultiplier;
+    const previousMixPan = activeMixPan;
     activeMixMultiplier = Math.max(0, Math.min(1, Number(mix.volume) || 0));
+    activeMixPan = Math.max(-1, Math.min(1, Number(mix.pan) || 0));
 
     switch (instrument.type) {
       case "kalimba": {
@@ -1256,13 +1272,14 @@
         tone("sine", frequency, start, duration, .07);
     }
     activeMixMultiplier = previousMixMultiplier;
+    activeMixPan = previousMixPan;
   }
 
   function renderInstrumentMixer() {
     const mixer = $("#instrumentMixer");
     mixer.innerHTML = "";
     INSTRUMENTS.forEach((instrument) => {
-      const mix = instrumentMix[instrument.id] || { volume: 1, mute: false };
+      const mix = instrumentMix[instrument.id] || { volume: 1, mute: false, solo: false, pan: 0 };
       const channel = document.createElement("div");
       channel.className = "mixer-channel";
 
@@ -1270,14 +1287,51 @@
       label.className = "mixer-channel-label";
       label.innerHTML = '<span class="emoji">' + instrument.emoji + '</span><span>' + instrument.name + "</span>";
 
+      const volumeWrap = document.createElement("label");
+      volumeWrap.className = "mixer-control";
+      volumeWrap.textContent = "Volume";
       const volume = document.createElement("input");
       volume.type = "range";
       volume.min = "0";
       volume.max = "100";
       volume.value = String(Math.round(Math.max(0, Math.min(1, Number(mix.volume) || 0)) * 100));
       volume.setAttribute("aria-label", instrument.name + " volume");
+      const volumeOut = document.createElement("output");
+      volumeOut.textContent = volume.value + "%";
       volume.addEventListener("input", () => {
         instrumentMix[instrument.id].volume = Number(volume.value) / 100;
+        volumeOut.textContent = volume.value + "%";
+      });
+      volumeWrap.append(volume, volumeOut);
+
+      const panWrap = document.createElement("label");
+      panWrap.className = "mixer-control";
+      panWrap.textContent = "Pan";
+      const pan = document.createElement("input");
+      pan.type = "range";
+      pan.min = "-100";
+      pan.max = "100";
+      pan.value = String(Math.round(Math.max(-1, Math.min(1, Number(mix.pan) || 0)) * 100));
+      pan.setAttribute("aria-label", instrument.name + " pan");
+      const panOut = document.createElement("output");
+      const panLabel = () => pan.value === "0" ? "Center" : (Number(pan.value) < 0 ? "L " + Math.abs(Number(pan.value)) : "R " + pan.value);
+      panOut.textContent = panLabel();
+      pan.addEventListener("input", () => {
+        instrumentMix[instrument.id].pan = Number(pan.value) / 100;
+        panOut.textContent = panLabel();
+      });
+      panWrap.append(pan, panOut);
+
+      const buttons = document.createElement("div");
+      buttons.className = "mixer-buttons";
+
+      const solo = document.createElement("button");
+      solo.type = "button";
+      solo.className = "solo-button" + (mix.solo ? " active" : "");
+      solo.textContent = mix.solo ? "Soloed" : "Solo";
+      solo.addEventListener("click", () => {
+        instrumentMix[instrument.id].solo = !instrumentMix[instrument.id].solo;
+        renderInstrumentMixer();
       });
 
       const mute = document.createElement("button");
@@ -1289,7 +1343,8 @@
         renderInstrumentMixer();
       });
 
-      channel.append(label, volume, mute);
+      buttons.append(solo, mute);
+      channel.append(label, volumeWrap, panWrap, buttons);
       mixer.appendChild(channel);
     });
   }
@@ -1324,7 +1379,9 @@
       sequence: deepClone(sequence),
       endStep: songEndStep,
       timeSignature,
-      loopMusic
+      loopMusic,
+      sectionNames: sectionNames.slice(),
+      instrumentMix: deepClone(instrumentMix)
     });
     if (musicHistory.length > MAX_UNDO) musicHistory.shift();
   }
@@ -1339,6 +1396,136 @@
     $("#endMarkerHelp").hidden = !endMarkerMode;
     $("#endMarkerReadout").textContent = "End: beat " + songEndStep;
   }
+
+  function sectionStart(index = selectedSection) {
+    return Math.max(0, Math.min(SECTION_COUNT - 1, index)) * SECTION_LENGTH;
+  }
+
+  function renderSectionBar() {
+    const bar = $("#sectionBar");
+    bar.innerHTML = "";
+    for (let index = 0; index < SECTION_COUNT; index += 1) {
+      const start = sectionStart(index);
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "section-button" + (index === selectedSection ? " active" : "");
+      button.innerHTML = (sectionNames[index] || ("Section " + String.fromCharCode(65 + index))) +
+        "<span>beats " + (start + 1) + "–" + (start + SECTION_LENGTH) + "</span>";
+      button.addEventListener("click", () => {
+        selectedSection = index;
+        measureEditStep = start;
+        $("#sectionNameInput").value = sectionNames[index];
+        renderSectionBar();
+        refreshSectionSelection();
+        refreshMeasureSelection();
+        const header = $('.seq-step[data-step="' + start + '"]');
+        if (header) header.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "start" });
+      });
+      bar.appendChild(button);
+    }
+
+    $("#sectionNameInput").value = sectionNames[selectedSection];
+    $("#moveSectionLeftBtn").disabled = selectedSection === 0;
+    $("#moveSectionRightBtn").disabled = selectedSection === SECTION_COUNT - 1;
+    $("#duplicateSectionBtn").disabled = selectedSection === SECTION_COUNT - 1;
+  }
+
+  function refreshSectionSelection() {
+    const start = sectionStart();
+    const end = start + SECTION_LENGTH;
+    $("#sequencer [data-step]").forEach((el) => {
+      const step = Number(el.dataset.step);
+      el.classList.toggle("section-selected", step >= start && step < end);
+      el.classList.toggle("section-boundary", step % SECTION_LENGTH === 0);
+    });
+  }
+
+  function copySectionData(index) {
+    const start = sectionStart(index);
+    return sequence.map((row) => row.slice(start, start + SECTION_LENGTH));
+  }
+
+  function pasteSectionData(index, rows) {
+    const start = sectionStart(index);
+    for (let row = 0; row < PITCHES.length; row += 1) {
+      for (let offset = 0; offset < SECTION_LENGTH; offset += 1) {
+        sequence[row][start + offset] = (rows[row] && rows[row][offset]) || null;
+      }
+    }
+  }
+
+  function swapSections(a, b) {
+    if (a === b || a < 0 || b < 0 || a >= SECTION_COUNT || b >= SECTION_COUNT) return;
+    const aData = copySectionData(a);
+    const bData = copySectionData(b);
+    pasteSectionData(a, bData);
+    pasteSectionData(b, aData);
+    const name = sectionNames[a];
+    sectionNames[a] = sectionNames[b];
+    sectionNames[b] = name;
+  }
+
+  $("#sectionNameInput").addEventListener("input", (event) => {
+    sectionNames[selectedSection] = (event.target.value || ("Section " + String.fromCharCode(65 + selectedSection))).slice(0, 16);
+    renderSectionBar();
+  });
+
+  $("#copySectionBtn").addEventListener("click", () => {
+    sectionClipboard = {
+      rows: copySectionData(selectedSection),
+      name: sectionNames[selectedSection]
+    };
+    $("#pasteSectionBtn").disabled = false;
+    toast("Section copied");
+  });
+
+  $("#pasteSectionBtn").addEventListener("click", () => {
+    if (!sectionClipboard) return;
+    pushMusicHistory();
+    pasteSectionData(selectedSection, sectionClipboard.rows);
+    renderSequencer();
+    toast("Section pasted");
+  });
+
+  $("#duplicateSectionBtn").addEventListener("click", () => {
+    if (selectedSection >= SECTION_COUNT - 1) return;
+    pushMusicHistory();
+    const target = selectedSection + 1;
+    pasteSectionData(target, copySectionData(selectedSection));
+    sectionNames[target] = (sectionNames[selectedSection] + " Copy").slice(0, 16);
+    selectedSection = target;
+    measureEditStep = sectionStart(target);
+    renderSectionBar();
+    renderSequencer();
+    toast("Section duplicated");
+  });
+
+  $("#moveSectionLeftBtn").addEventListener("click", () => {
+    if (selectedSection <= 0) return;
+    pushMusicHistory();
+    swapSections(selectedSection, selectedSection - 1);
+    selectedSection -= 1;
+    measureEditStep = sectionStart();
+    renderSectionBar();
+    renderSequencer();
+  });
+
+  $("#moveSectionRightBtn").addEventListener("click", () => {
+    if (selectedSection >= SECTION_COUNT - 1) return;
+    pushMusicHistory();
+    swapSections(selectedSection, selectedSection + 1);
+    selectedSection += 1;
+    measureEditStep = sectionStart();
+    renderSectionBar();
+    renderSequencer();
+  });
+
+  $("#clearSectionBtn").addEventListener("click", () => {
+    pushMusicHistory();
+    pasteSectionData(selectedSection, Array.from({ length: PITCHES.length }, () => Array(SECTION_LENGTH).fill(null)));
+    renderSequencer();
+    toast("Section cleared");
+  });
 
   function currentMeasureStart() {
     return Math.floor(Math.max(0, measureEditStep) / timeSignature) * timeSignature;
@@ -1373,6 +1560,9 @@
       header.addEventListener("click", () => {
         if (!endMarkerMode) {
           measureEditStep = step;
+          selectedSection = Math.floor(step / SECTION_LENGTH);
+          renderSectionBar();
+          refreshSectionSelection();
           refreshMeasureSelection();
           return;
         }
@@ -1405,6 +1595,9 @@
 
         cell.addEventListener("click", () => {
           measureEditStep = step;
+          selectedSection = Math.floor(step / SECTION_LENGTH);
+          renderSectionBar();
+          refreshSectionSelection();
           refreshMeasureSelection();
           if (step >= songEndStep) {
             toast("Move the end marker later to use this beat");
@@ -1431,6 +1624,7 @@
 
     highlightedStep = -1;
     refreshPlayhead(true);
+    refreshSectionSelection();
     refreshMeasureSelection();
   }
 
@@ -1578,6 +1772,10 @@
     songEndStep = previous.endStep;
     timeSignature = previous.timeSignature;
     loopMusic = previous.loopMusic;
+    if (Array.isArray(previous.sectionNames)) sectionNames = previous.sectionNames.slice(0, SECTION_COUNT);
+    if (previous.instrumentMix) instrumentMix = deepClone(previous.instrumentMix);
+    renderSectionBar();
+    renderInstrumentMixer();
     updateComposerButtons();
     renderSequencer();
   });
@@ -1671,7 +1869,7 @@
   function songPayload() {
     return {
       format: "emojiro-paint-song",
-      version: 3,
+      version: 4,
       name: $("#songName").value || "My Emoji Song",
       tempo: Number($("#tempoSlider").value),
       timeSignature,
@@ -1680,6 +1878,7 @@
       pitches: PITCHES,
       steps: SEQ_STEPS,
       maxLayersPerBeat: MAX_LAYERS,
+      sections: sectionNames.slice(),
       mixer: instrumentMix,
       sequence
     };
@@ -1710,22 +1909,29 @@
     loopMusic = song.loop !== false;
     endMarkerMode = false;
     measureEditStep = 0;
+    selectedSection = 0;
+    sectionNames = Array.isArray(song.sections)
+      ? Array.from({ length: SECTION_COUNT }, (_, index) => String(song.sections[index] || ("Section " + String.fromCharCode(65 + index))).slice(0, 16))
+      : ["Section A", "Section B", "Section C", "Section D"];
     if (song.mixer && typeof song.mixer === "object") {
       INSTRUMENTS.forEach((instrument) => {
         const saved = song.mixer[instrument.id];
         instrumentMix[instrument.id] = {
           volume: saved ? Math.max(0, Math.min(1, Number(saved.volume) || 0)) : 1,
-          mute: Boolean(saved && saved.mute)
+          mute: Boolean(saved && saved.mute),
+          solo: Boolean(saved && saved.solo),
+          pan: saved ? Math.max(-1, Math.min(1, Number(saved.pan) || 0)) : 0
         };
       });
     } else {
       instrumentMix = Object.fromEntries(
-        INSTRUMENTS.map((instrument) => [instrument.id, { volume: 1, mute: false }])
+        INSTRUMENTS.map((instrument) => [instrument.id, { volume: 1, mute: false, solo: false, pan: 0 }])
       );
     }
     $("#tempoOut").textContent = $("#tempoSlider").value + " BPM";
     $("#tempoReadout").textContent = $("#tempoSlider").value;
     updateComposerButtons();
+    renderSectionBar();
     renderInstrumentMixer();
     renderSequencer();
   }
@@ -1801,10 +2007,14 @@
       if (!used) return;
 
       const channel = instrument.id === "drum" ? 9 : channels[melodicChannelIndex++];
-      const mix = instrumentMix[instrument.id] || { volume: 1, mute: false };
-      const volume = mix.mute ? 0 : Math.round(Math.max(0, Math.min(1, mix.volume)) * 127);
+      const mix = instrumentMix[instrument.id] || { volume: 1, mute: false, solo: false, pan: 0 };
+      const anySolo = Object.values(instrumentMix).some((entry) => entry && entry.solo);
+      const audible = !mix.mute && (!anySolo || mix.solo);
+      const volume = audible ? Math.round(Math.max(0, Math.min(1, mix.volume)) * 127) : 0;
+      const pan = Math.round((Math.max(-1, Math.min(1, Number(mix.pan) || 0)) + 1) * 63.5);
       const events = [
-        { tick: 0, order: 0, bytes: [0xB0 | channel, 7, volume] }
+        { tick: 0, order: 0, bytes: [0xB0 | channel, 7, volume] },
+        { tick: 0, order: 1, bytes: [0xB0 | channel, 10, pan] }
       ];
       if (instrument.id !== "drum") {
         events.push({ tick: 0, order: 1, bytes: [0xC0 | channel, programMap[instrument.id] ?? 0] });
@@ -1845,6 +2055,137 @@
   $("#exportMidiBtn").addEventListener("click", () => {
     exportMidi();
     toast("MIDI exported");
+  });
+
+  function offlineWave(type, phase) {
+    const cycle = phase / (Math.PI * 2);
+    if (type === "square") return Math.sin(phase) >= 0 ? 1 : -1;
+    if (type === "sawtooth") return 2 * (cycle - Math.floor(cycle + .5));
+    if (type === "triangle") return 2 * Math.abs(2 * (cycle - Math.floor(cycle + .5))) - 1;
+    return Math.sin(phase);
+  }
+
+  function offlineVoiceConfig(id, frequency) {
+    switch (id) {
+      case "kalimba": return { wave: "triangle", frequency: frequency * 2, gain: .22, duration: .34, harmonic: 2 };
+      case "drum": return { wave: "sine", frequency: 72, gain: .45, duration: .22, noise: .12 };
+      case "lizard": return { wave: "square", frequency: frequency * 1.4, gain: .16, duration: .22, bend: 1.45 };
+      case "star": return { wave: "sine", frequency: frequency * 4, gain: .16, duration: .65, harmonic: 2 };
+      case "trumpet": return { wave: "sawtooth", frequency, gain: .16, duration: .42, harmonic: 2 };
+      case "game": return { wave: "square", frequency, gain: .18, duration: .34 };
+      case "dog": return { wave: "sawtooth", frequency: Math.max(65, frequency / 2), gain: .17, duration: .24, bend: .72, noise: .05 };
+      case "cat": return { wave: "sawtooth", frequency, gain: .13, duration: .36, bend: 1.25 };
+      case "pig": return { wave: "square", frequency: Math.max(55, frequency * .62), gain: .15, duration: .27, bend: .72, noise: .05 };
+      case "duck": return { wave: "sawtooth", frequency, gain: .14, duration: .2, harmonic: 2 };
+      case "baby": return { wave: "sine", frequency: frequency * 1.5, gain: .16, duration: .2, bend: 1.5 };
+      case "plane": return { wave: "triangle", frequency: frequency / 2, gain: .2, duration: .48, harmonic: 2 };
+      case "ship": return { wave: frequency < 440 ? "square" : "sine", frequency: frequency < 440 ? 170 : frequency * 2, gain: .16, duration: .18, noise: frequency < 440 ? .02 : .18 };
+      case "car": return { wave: "square", frequency: frequency * 2, gain: .12, duration: .42, harmonic: 2 };
+      case "heart": return { wave: "sawtooth", frequency: frequency / 4, gain: .24, duration: .52, harmonic: 2 };
+      default: return { wave: "sine", frequency, gain: .15, duration: .3 };
+    }
+  }
+
+  async function exportWav() {
+    const sampleRate = 22050;
+    const beatSeconds = 60 / Number($("#tempoSlider").value);
+    const tailSeconds = 1.2;
+    const durationSeconds = songEndStep * beatSeconds + tailSeconds;
+    const sampleCount = Math.ceil(durationSeconds * sampleRate);
+    const left = new Float32Array(sampleCount);
+    const right = new Float32Array(sampleCount);
+    const anySolo = Object.values(instrumentMix).some((entry) => entry && entry.solo);
+
+    for (let step = 0; step < songEndStep; step += 1) {
+      const startSample = Math.floor(step * beatSeconds * sampleRate);
+
+      for (let row = 0; row < PITCHES.length; row += 1) {
+        const id = sequence[row][step];
+        if (!id) continue;
+        const mix = instrumentMix[id] || { volume: 1, mute: false, solo: false, pan: 0 };
+        if (mix.mute || (anySolo && !mix.solo) || Number(mix.volume) <= 0) continue;
+
+        const config = offlineVoiceConfig(id, noteToFrequency(PITCHES[row]));
+        const voiceSamples = Math.min(sampleCount - startSample, Math.ceil(config.duration * sampleRate));
+        const pan = Math.max(-1, Math.min(1, Number(mix.pan) || 0));
+        const leftPan = Math.cos((pan + 1) * Math.PI / 4);
+        const rightPan = Math.sin((pan + 1) * Math.PI / 4);
+        const volume = Math.max(0, Math.min(1, Number(mix.volume) || 0));
+
+        for (let i = 0; i < voiceSamples; i += 1) {
+          const t = i / sampleRate;
+          const progress = i / Math.max(1, voiceSamples - 1);
+          const envelope = Math.pow(1 - progress, id === "drum" ? 3.8 : 2.1) * Math.min(1, t / .008);
+          const bend = config.bend ? 1 + (config.bend - 1) * progress : 1;
+          const phase = Math.PI * 2 * config.frequency * bend * t;
+          let sample = offlineWave(config.wave, phase);
+          if (config.harmonic) sample += .28 * offlineWave("sine", phase * config.harmonic);
+          if (config.noise) sample += (Math.random() * 2 - 1) * config.noise;
+          sample *= config.gain * volume * envelope;
+          const index = startSample + i;
+          left[index] += sample * leftPan;
+          right[index] += sample * rightPan;
+        }
+      }
+
+      if (step % 8 === 7) await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+
+    let peak = .001;
+    for (let i = 0; i < sampleCount; i += 1) {
+      peak = Math.max(peak, Math.abs(left[i]), Math.abs(right[i]));
+    }
+    const scale = peak > .95 ? .95 / peak : 1;
+    const buffer = new ArrayBuffer(44 + sampleCount * 4);
+    const view = new DataView(buffer);
+
+    const writeAscii = (offset, value) => {
+      for (let i = 0; i < value.length; i += 1) view.setUint8(offset + i, value.charCodeAt(i));
+    };
+
+    writeAscii(0, "RIFF");
+    view.setUint32(4, 36 + sampleCount * 4, true);
+    writeAscii(8, "WAVE");
+    writeAscii(12, "fmt ");
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, 2, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * 4, true);
+    view.setUint16(32, 4, true);
+    view.setUint16(34, 16, true);
+    writeAscii(36, "data");
+    view.setUint32(40, sampleCount * 4, true);
+
+    let offset = 44;
+    for (let i = 0; i < sampleCount; i += 1) {
+      const l = Math.max(-1, Math.min(1, left[i] * scale));
+      const r = Math.max(-1, Math.min(1, right[i] * scale));
+      view.setInt16(offset, Math.round(l * 32767), true);
+      view.setInt16(offset + 2, Math.round(r * 32767), true);
+      offset += 4;
+    }
+
+    const blob = new Blob([buffer], { type: "audio/wav" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = safeFilename($("#songName").value || "emojiro-song") + ".wav";
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  $("#exportWavBtn").addEventListener("click", async () => {
+    $("#exportWavBtn").disabled = true;
+    toast("Rendering WAV…");
+    try {
+      await exportWav();
+      toast("WAV exported");
+    } catch (error) {
+      toast("WAV export failed");
+    } finally {
+      $("#exportWavBtn").disabled = false;
+    }
   });
 
   $("#saveSongBtn").addEventListener("click", () => {
@@ -2214,6 +2555,7 @@
   renderCanvas();
   renderFrameList();
   renderInstrumentBank();
+  renderSectionBar();
   renderInstrumentMixer();
   updateComposerButtons();
   renderSequencer();
