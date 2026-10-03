@@ -1,0 +1,17 @@
+{
+  "name": "Emojiro Paint",
+  "short_name": "Emojiro",
+  "description": "Draw, stamp, animate, and compose music with emoji.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f6e8cf",
+  "theme_color": "#f28c45",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
