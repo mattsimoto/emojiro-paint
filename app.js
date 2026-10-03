@@ -8,6 +8,7 @@
   const MAX_UNDO = 40;
   const PROJECT_KEY = "emojiro-paint-project-v1";
   const SONG_KEY = "emojiro-paint-song-v2";
+  const CUSTOM_STAMPS_KEY = "emojiro-paint-custom-stamps-v1";
 
   const COLORS = [
     "#2d2a32", "#ffffff", "#e45b5b", "#f28c45", "#f7d25c", "#74b86f",
@@ -104,6 +105,34 @@
   let activeFrameIndex = 0;
   let previewTimer = null;
   let previewOrigin = 0;
+  let onionSkin = false;
+  let syncMusic = false;
+  let customStamps = loadCustomStamps();
+  let activeCustomStampId = customStamps[0] ? customStamps[0].id : null;
+  let stampEditorPixels = Array(64).fill(null);
+  let stampEditorColor = COLORS[2];
+  let stampEditorPainting = false;
+  let stampEditorPaintValue = null;
+
+  function loadCustomStamps() {
+    try {
+      const stored = JSON.parse(localStorage.getItem(CUSTOM_STAMPS_KEY) || "[]");
+      if (!Array.isArray(stored)) return [];
+      return stored
+        .filter((stamp) => stamp && Array.isArray(stamp.pixels) && stamp.pixels.length === 64)
+        .slice(0, 24);
+    } catch (error) {
+      return [];
+    }
+  }
+
+  function persistCustomStamps() {
+    localStorage.setItem(CUSTOM_STAMPS_KEY, JSON.stringify(customStamps));
+  }
+
+  function activeCustomStamp() {
+    return customStamps.find((stamp) => stamp.id === activeCustomStampId) || null;
+  }
 
   function blankCell() {
     return { color: null, emoji: null };
@@ -129,6 +158,29 @@
     ctx.clearRect(0, 0, paintCanvas.width, paintCanvas.height);
     ctx.fillStyle = "#fffdf7";
     ctx.fillRect(0, 0, paintCanvas.width, paintCanvas.height);
+
+    if (onionSkin && !previewTimer && activeFrameIndex > 0 && frame === currentFrame()) {
+      const previous = frames[activeFrameIndex - 1];
+      ctx.save();
+      ctx.globalAlpha = 0.18;
+      for (let y = 0; y < ROWS; y += 1) {
+        for (let x = 0; x < COLS; x += 1) {
+          const ghost = previous[cellIndex(x, y)];
+          if (!ghost) continue;
+          if (ghost.color) {
+            ctx.fillStyle = ghost.color;
+            ctx.fillRect(x * CELL_W, y * CELL_H, CELL_W, CELL_H);
+          }
+          if (ghost.emoji) {
+            ctx.font = "17px Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji, sans-serif";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(ghost.emoji, x * CELL_W + CELL_W / 2, y * CELL_H + CELL_H / 2 + 1);
+          }
+        }
+      }
+      ctx.restore();
+    }
 
     for (let y = 0; y < ROWS; y += 1) {
       for (let x = 0; x < COLS; x += 1) {
@@ -206,8 +258,48 @@
     });
   }
 
+  function renderCustomStampPalette() {
+    const palette = $("#customStampPalette");
+    if (!palette) return;
+    palette.innerHTML = "";
+
+    if (!customStamps.length) {
+      const empty = document.createElement("span");
+      empty.className = "stamp-help";
+      empty.textContent = "No custom stamps yet.";
+      palette.appendChild(empty);
+      return;
+    }
+
+    customStamps.forEach((stamp) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "custom-stamp-button" + (stamp.id === activeCustomStampId ? " active" : "");
+      button.title = stamp.name || "Custom stamp";
+      button.setAttribute("aria-label", "Use custom stamp " + (stamp.name || "Custom stamp"));
+
+      const preview = document.createElement("span");
+      preview.className = "custom-stamp-preview";
+      stamp.pixels.forEach((color) => {
+        const pixel = document.createElement("i");
+        if (color) pixel.style.background = color;
+        preview.appendChild(pixel);
+      });
+      button.appendChild(preview);
+
+      button.addEventListener("click", () => {
+        activeCustomStampId = stamp.id;
+        activeTool = "customstamp";
+        syncToolButtons();
+        renderCustomStampPalette();
+      });
+
+      palette.appendChild(button);
+    });
+  }
+
   function syncToolButtons() {
-    $$("#paintTools .tool-button").forEach((button) => {
+    $("#paintTools .tool-button").forEach((button) => {
       button.classList.toggle("active", button.dataset.tool === activeTool);
     });
   }
@@ -249,6 +341,30 @@
       setCell(x, y, blankCell());
     } else if (activeTool === "fill") {
       floodFill(x, y);
+    } else if (activeTool === "spray") {
+      for (let i = 0; i < 9; i += 1) {
+        const angle = Math.random() * Math.PI * 2;
+        const radius = Math.random() * 2.7;
+        const sx = Math.round(x + Math.cos(angle) * radius);
+        const sy = Math.round(y + Math.sin(angle) * radius);
+        if (sx >= 0 && sx < COLS && sy >= 0 && sy < ROWS) {
+          setCell(sx, sy, { color: activeColor, emoji: null });
+        }
+      }
+    } else if (activeTool === "customstamp") {
+      const stamp = activeCustomStamp();
+      if (!stamp) {
+        toast("Make or select a custom stamp first");
+        return;
+      }
+      const originX = x - 3;
+      const originY = y - 3;
+      stamp.pixels.forEach((color, index) => {
+        if (!color) return;
+        const px = index % 8;
+        const py = Math.floor(index / 8);
+        setCell(originX + px, originY + py, { color, emoji: null });
+      });
     }
   }
 
@@ -313,6 +429,20 @@
     }
   }
 
+  function plotEllipse(x0, y0, x1, y1, frame) {
+    const cx = (x0 + x1) / 2;
+    const cy = (y0 + y1) / 2;
+    const rx = Math.max(.5, Math.abs(x1 - x0) / 2);
+    const ry = Math.max(.5, Math.abs(y1 - y0) / 2);
+    const samples = Math.max(24, Math.ceil(Math.PI * (rx + ry) * 2.2));
+    for (let i = 0; i < samples; i += 1) {
+      const angle = (i / samples) * Math.PI * 2;
+      const x = Math.round(cx + Math.cos(angle) * rx);
+      const y = Math.round(cy + Math.sin(angle) * ry);
+      setCell(x, y, { color: activeColor, emoji: null }, frame);
+    }
+  }
+
   paintCanvas.addEventListener("pointerdown", (event) => {
     stopFramePreview();
     paintCanvas.setPointerCapture(event.pointerId);
@@ -321,7 +451,7 @@
     dragStart = pos;
     pushUndo();
 
-    if (activeTool === "line" || activeTool === "rect") {
+    if (activeTool === "line" || activeTool === "rect" || activeTool === "ellipse") {
       dragBase = deepClone(currentFrame());
     } else {
       paintAt(pos.x, pos.y);
@@ -334,13 +464,14 @@
     if (!isDrawing) return;
     const pos = pointerCell(event);
 
-    if (activeTool === "pencil" || activeTool === "stamp" || activeTool === "eraser") {
+    if (activeTool === "pencil" || activeTool === "stamp" || activeTool === "eraser" || activeTool === "spray") {
       paintAt(pos.x, pos.y);
       renderCanvas();
-    } else if ((activeTool === "line" || activeTool === "rect") && dragBase) {
+    } else if ((activeTool === "line" || activeTool === "rect" || activeTool === "ellipse") && dragBase) {
       frames[activeFrameIndex] = deepClone(dragBase);
       if (activeTool === "line") plotLine(dragStart.x, dragStart.y, pos.x, pos.y, currentFrame());
       if (activeTool === "rect") plotRect(dragStart.x, dragStart.y, pos.x, pos.y, currentFrame());
+      if (activeTool === "ellipse") plotEllipse(dragStart.x, dragStart.y, pos.x, pos.y, currentFrame());
       renderCanvas();
     }
   });
@@ -478,6 +609,30 @@
     renderFrameList();
   });
 
+  function moveActiveFrame(direction) {
+    stopFramePreview();
+    const nextIndex = activeFrameIndex + direction;
+    if (nextIndex < 0 || nextIndex >= frames.length) return;
+    const temp = frames[activeFrameIndex];
+    frames[activeFrameIndex] = frames[nextIndex];
+    frames[nextIndex] = temp;
+    activeFrameIndex = nextIndex;
+    renderCanvas();
+    renderFrameList();
+  }
+
+  $("#moveFrameLeftBtn").addEventListener("click", () => moveActiveFrame(-1));
+  $("#moveFrameRightBtn").addEventListener("click", () => moveActiveFrame(1));
+
+  $("#onionSkinToggle").addEventListener("change", (event) => {
+    onionSkin = event.target.checked;
+    renderCanvas();
+  });
+
+  $("#syncMusicToggle").addEventListener("change", (event) => {
+    syncMusic = event.target.checked;
+  });
+
   $("#frameSpeed").addEventListener("input", (event) => {
     $("#frameSpeedOut").textContent = event.target.value + " fps";
     if (previewTimer) startFramePreview();
@@ -489,6 +644,7 @@
     let index = activeFrameIndex;
     const fps = Number($("#frameSpeed").value);
     $("#playFramesBtn").textContent = "■ Stop";
+    if (syncMusic && !isMusicPlaying) startMusic();
     previewTimer = setInterval(() => {
       index = (index + 1) % frames.length;
       activeFrameIndex = index;
@@ -502,6 +658,7 @@
     clearInterval(previewTimer);
     previewTimer = null;
     $("#playFramesBtn").textContent = "▶ Preview";
+    if (syncMusic && isMusicPlaying) stopMusic();
     if (restore) {
       activeFrameIndex = Math.min(previewOrigin, frames.length - 1);
       renderCanvas();
@@ -512,6 +669,113 @@
   $("#playFramesBtn").addEventListener("click", () => {
     if (previewTimer) stopFramePreview();
     else startFramePreview();
+  });
+
+  // -----------------------------
+  // Custom Stamp Workshop
+  // -----------------------------
+
+  function renderStampEditor() {
+    const grid = $("#stampEditorGrid");
+    grid.innerHTML = "";
+    stampEditorPixels.forEach((color, index) => {
+      const pixel = document.createElement("button");
+      pixel.type = "button";
+      pixel.className = "stamp-pixel" + (color ? " filled" : "");
+      pixel.dataset.index = index;
+      if (color) pixel.style.background = color;
+      pixel.setAttribute("aria-label", "Stamp pixel " + (index + 1));
+      grid.appendChild(pixel);
+    });
+  }
+
+  function renderStampEditorColors() {
+    const palette = $("#stampEditorColors");
+    palette.innerHTML = "";
+    COLORS.forEach((color) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "color-swatch" + (color === stampEditorColor ? " active" : "");
+      button.style.background = color;
+      button.setAttribute("aria-label", "Use stamp color " + color);
+      button.addEventListener("click", () => {
+        stampEditorColor = color;
+        renderStampEditorColors();
+      });
+      palette.appendChild(button);
+    });
+  }
+
+  function stampEditorIndexFromPointer(event) {
+    const grid = $("#stampEditorGrid");
+    const rect = grid.getBoundingClientRect();
+    const x = Math.max(0, Math.min(7, Math.floor((event.clientX - rect.left) / rect.width * 8)));
+    const y = Math.max(0, Math.min(7, Math.floor((event.clientY - rect.top) / rect.height * 8)));
+    return y * 8 + x;
+  }
+
+  function applyStampEditorPointer(event, starting) {
+    const index = stampEditorIndexFromPointer(event);
+    if (starting) {
+      stampEditorPaintValue = stampEditorPixels[index] === stampEditorColor ? null : stampEditorColor;
+    }
+    stampEditorPixels[index] = stampEditorPaintValue;
+    renderStampEditor();
+  }
+
+  $("#stampEditorGrid").addEventListener("pointerdown", (event) => {
+    event.preventDefault();
+    stampEditorPainting = true;
+    $("#stampEditorGrid").setPointerCapture(event.pointerId);
+    applyStampEditorPointer(event, true);
+  });
+
+  $("#stampEditorGrid").addEventListener("pointermove", (event) => {
+    if (!stampEditorPainting) return;
+    event.preventDefault();
+    applyStampEditorPointer(event, false);
+  });
+
+  $("#stampEditorGrid").addEventListener("pointerup", (event) => {
+    stampEditorPainting = false;
+    if ($("#stampEditorGrid").hasPointerCapture(event.pointerId)) {
+      $("#stampEditorGrid").releasePointerCapture(event.pointerId);
+    }
+  });
+
+  $("#stampEditorGrid").addEventListener("pointercancel", () => {
+    stampEditorPainting = false;
+  });
+
+  $("#openStampMakerBtn").addEventListener("click", () => {
+    stampEditorPixels = Array(64).fill(null);
+    $("#customStampName").value = "My Stamp";
+    renderStampEditor();
+    renderStampEditorColors();
+    $("#stampMakerDialog").showModal();
+  });
+
+  $("#clearStampEditorBtn").addEventListener("click", () => {
+    stampEditorPixels = Array(64).fill(null);
+    renderStampEditor();
+  });
+
+  $("#saveCustomStampBtn").addEventListener("click", () => {
+    if (!stampEditorPixels.some(Boolean)) return toast("Draw something before saving the stamp");
+    const stamp = {
+      id: "stamp-" + Date.now().toString(36),
+      name: ($("#customStampName").value || "My Stamp").trim().slice(0, 24),
+      pixels: stampEditorPixels.slice()
+    };
+    customStamps.push(stamp);
+    if (customStamps.length > 24) customStamps.shift();
+    activeCustomStampId = stamp.id;
+    persistCustomStamps();
+    renderCustomStampPalette();
+    activeTool = "customstamp";
+    syncToolButtons();
+    $("#stampMakerDialog").close();
+    toast("Custom stamp saved");
   });
 
   // -----------------------------
@@ -1083,7 +1347,11 @@
       paint: {
         frames,
         activeFrameIndex,
-        frameSpeed: Number($("#frameSpeed").value)
+        frameSpeed: Number($("#frameSpeed").value),
+        onionSkin,
+        syncMusic,
+        customStamps,
+        activeCustomStampId
       },
       music: songPayload()
     };
@@ -1105,6 +1373,18 @@
         activeFrameIndex = Math.min(project.paint.activeFrameIndex || 0, frames.length - 1);
         $("#frameSpeed").value = project.paint.frameSpeed || 4;
         $("#frameSpeedOut").textContent = $("#frameSpeed").value + " fps";
+        onionSkin = Boolean(project.paint.onionSkin);
+        syncMusic = Boolean(project.paint.syncMusic);
+        $("#onionSkinToggle").checked = onionSkin;
+        $("#syncMusicToggle").checked = syncMusic;
+        if (Array.isArray(project.paint.customStamps)) {
+          customStamps = project.paint.customStamps
+            .filter((stamp) => stamp && Array.isArray(stamp.pixels) && stamp.pixels.length === 64)
+            .slice(0, 24);
+          activeCustomStampId = project.paint.activeCustomStampId || (customStamps[0] ? customStamps[0].id : null);
+          persistCustomStamps();
+          renderCustomStampPalette();
+        }
         undoStack = [];
         redoStack = [];
         renderCanvas();
@@ -1145,6 +1425,11 @@
   // -----------------------------
 
   renderPaintPalettes();
+  renderCustomStampPalette();
+  renderStampEditor();
+  renderStampEditorColors();
+  $("#onionSkinToggle").checked = onionSkin;
+  $("#syncMusicToggle").checked = syncMusic;
   renderCanvas();
   renderFrameList();
   renderInstrumentBank();
