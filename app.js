@@ -1270,6 +1270,99 @@
     return Math.round(unit * humanizeMs);
   }
 
+  function songDurationSeconds() {
+    let seconds = 0;
+    for (let step = 0; step < songEndStep; step += 1) {
+      seconds += 60 / effectiveTempoAtStep(step);
+    }
+    return seconds;
+  }
+
+  function formatDuration(seconds) {
+    const total = Math.max(0, Math.round(seconds));
+    const minutes = Math.floor(total / 60);
+    return minutes + ":" + String(total % 60).padStart(2, "0");
+  }
+
+  function renderArrangementOverview() {
+    const overview = $("#arrangementOverview");
+    if (!overview) return;
+    overview.innerHTML = "";
+    $("#songDurationReadout").textContent = formatDuration(songDurationSeconds());
+
+    for (let section = 0; section < SECTION_COUNT; section += 1) {
+      const start = sectionStart(section);
+      const end = Math.min(songEndStep, start + SECTION_LENGTH);
+      let noteCount = 0;
+      let drumCount = 0;
+      let seconds = 0;
+
+      for (let step = start; step < end; step += 1) {
+        seconds += 60 / effectiveTempoAtStep(step);
+        for (let row = 0; row < PITCHES.length; row += 1) {
+          if (sequence[row][step]) noteCount += 1;
+        }
+        for (let lane = 0; lane < PERCUSSION_LANES.length; lane += 1) {
+          if (percussionPattern[lane][step]) drumCount += 1;
+        }
+      }
+
+      const card = document.createElement("button");
+      card.type = "button";
+      card.className = "arrangement-card" +
+        (section === selectedSection ? " active" : "") +
+        (start >= songEndStep ? " after-end" : "");
+
+      const title = document.createElement("div");
+      title.className = "arrangement-card-title";
+      const name = document.createElement("strong");
+      name.textContent = sectionNames[section] || ("Section " + String.fromCharCode(65 + section));
+      const bpm = document.createElement("span");
+      bpm.textContent = effectiveTempoAtStep(start) + " BPM";
+      title.append(name, bpm);
+
+      const meta = document.createElement("div");
+      meta.className = "arrangement-card-meta";
+      [
+        noteCount + " notes",
+        drumCount + " hits",
+        formatDuration(seconds)
+      ].forEach((value) => {
+        const pill = document.createElement("span");
+        pill.textContent = value;
+        meta.appendChild(pill);
+      });
+
+      const activity = document.createElement("div");
+      activity.className = "arrangement-activity";
+      for (let offset = 0; offset < SECTION_LENGTH; offset += 1) {
+        const step = start + offset;
+        const beat = document.createElement("span");
+        beat.className = "arrangement-beat";
+        const melody = step < songEndStep && sequence.some((row) => Boolean(row[step]));
+        const drums = step < songEndStep && percussionPattern.some((lane) => Boolean(lane[step]));
+        if (melody && drums) beat.classList.add("both");
+        else if (melody) beat.classList.add("melody");
+        else if (drums) beat.classList.add("drums");
+        activity.appendChild(beat);
+      }
+
+      card.append(title, meta, activity);
+      card.addEventListener("click", () => {
+        selectedSection = section;
+        measureEditStep = start;
+        renderSectionBar();
+        renderPercussionGrid();
+        refreshSectionSelection();
+        refreshMeasureSelection();
+        const header = $('.seq-step[data-step="' + start + '"]');
+        if (header) header.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "start" });
+      });
+
+      overview.appendChild(card);
+    }
+  }
+
   function instrumentById(id) {
     return INSTRUMENTS.find((instrument) => instrument.id === id);
   }
@@ -1696,6 +1789,7 @@
     $("#duplicateSectionBtn").disabled = selectedSection === SECTION_COUNT - 1;
     $("#variationSectionBtn").disabled = selectedSection === SECTION_COUNT - 1;
     syncSectionTempoUi();
+    renderArrangementOverview();
   }
 
   function refreshSectionSelection() {
@@ -1923,6 +2017,7 @@
         grid.appendChild(cell);
       }
     });
+    renderArrangementOverview();
   }
 
   function applyDrumPreset(name) {
@@ -2062,6 +2157,7 @@
       );
     }
     if (audition && chosen) playInstrument(chosen, noteToFrequency(PITCHES[row]), .18);
+    renderArrangementOverview();
     return true;
   }
 
@@ -2207,6 +2303,7 @@
     refreshSectionSelection();
     renderSectionBar();
     renderPercussionGrid();
+    renderArrangementOverview();
   }
 
   function renderLiveKeyboard() {
@@ -2336,6 +2433,7 @@
     refreshSectionSelection();
     refreshMeasureSelection();
     refreshScaleGuide();
+    renderArrangementOverview();
   }
 
   function refreshPlayhead(force = false) {
