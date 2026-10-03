@@ -43,12 +43,15 @@ Emojiro Paint is a touch-friendly browser creativity toy inspired by classic con
 - Looping and music undo
 - Measure selection plus copy, paste, and clear
 - Four 24-beat song sections with rename, copy/paste, duplicate, clear, and reorder controls
-- Per-instrument volume, mute, solo, and stereo pan mixer
+- Section-only playback with optional section looping
+- Composer zoom plus compact notation mode for small screens
+- Per-instrument volume, mute, solo, stereo pan, tone filter, and echo controls
 - Three original demo songs
 - Song save/load in local storage
 - JSON song import/export
 - Standard MIDI file export
-- Offline-rendered stereo WAV export
+- Offline-rendered stereo WAV export with mixer effects
+- Combined animation + soundtrack video export using browser MediaRecorder
 
 ### 💾 Project storage
 
@@ -102,7 +105,7 @@ Use the frame strip to add, duplicate, delete, reorder, or select frames. **Onio
 
 ### Music
 
-Choose an emoji instrument, then place it on the staff. Each beat supports up to three simultaneous notes. Selecting the same instrument in the same cell removes it. Tap any beat to select its measure, then copy, paste, or clear the measure. The 96-beat song is also organized into four editable 24-beat sections that can be renamed, duplicated, moved, copied, pasted, or cleared. The mixer controls volume, mute, solo, and stereo pan for each emoji instrument. Press **Space** to play or stop while Music Maker is active.
+Choose an emoji instrument, then place it on the staff. Each beat supports up to three simultaneous notes. Selecting the same instrument in the same cell removes it. Tap any beat to select its measure, then copy, paste, or clear the measure. The 96-beat song is also organized into four editable 24-beat sections that can be renamed, duplicated, moved, copied, pasted, or cleared. The mixer controls volume, mute, solo, stereo pan, tone filtering, and echo for each emoji instrument. Sections can be auditioned independently and looped while editing. Press **Space** to play or stop while Music Maker is active.
 
 ## Architecture
 
@@ -122,11 +125,10 @@ The project intentionally remains plain HTML, CSS, and JavaScript:
 
 ## Next milestones
 
-- Composer zoom and compact mobile notation view
-- Section-specific playback and loop ranges
-- Track-level effects such as delay and filter
-- Combined music + animation video export
 - Shareable URL-encoded song snippets
+- Section-level tempo or instrument overrides
+- Chord/scale helpers and note painting
+- Export presets for social-video dimensions
 - Cloud-sync option for project libraries
 - Original mini-games and interactive title-screen toys
 
