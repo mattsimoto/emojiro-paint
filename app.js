@@ -1086,6 +1086,12 @@
   let songEndStep = SEQ_STEPS;
   let endMarkerMode = false;
   let musicHistory = [];
+  let measureEditStep = 0;
+  let measureClipboard = null;
+  let activeMixMultiplier = 1;
+  let instrumentMix = Object.fromEntries(
+    INSTRUMENTS.map((instrument) => [instrument.id, { volume: 1, mute: false }])
+  );
 
   function makeSequence() {
     return Array.from({ length: PITCHES.length }, () => Array(SEQ_STEPS).fill(null));
@@ -1116,7 +1122,10 @@
     const ac = ensureAudio();
     const gain = ac.createGain();
     gain.gain.setValueAtTime(0.0001, when);
-    gain.gain.exponentialRampToValueAtTime(gainValue, when + Math.min(.02, Math.max(.005, duration * .18)));
+    gain.gain.exponentialRampToValueAtTime(
+      Math.max(0.0001, gainValue * activeMixMultiplier),
+      when + Math.min(.02, Math.max(.005, duration * .18))
+    );
     gain.gain.exponentialRampToValueAtTime(0.0001, when + duration);
     gain.connect(ac.destination);
     return gain;
@@ -1160,6 +1169,10 @@
     const start = when == null ? ac.currentTime : when;
     const instrument = instrumentById(id);
     if (!instrument) return;
+    const mix = instrumentMix[id] || { volume: 1, mute: false };
+    if (mix.mute || Number(mix.volume) <= 0) return;
+    const previousMixMultiplier = activeMixMultiplier;
+    activeMixMultiplier = Math.max(0, Math.min(1, Number(mix.volume) || 0));
 
     switch (instrument.type) {
       case "kalimba": {
@@ -1242,6 +1255,43 @@
       default:
         tone("sine", frequency, start, duration, .07);
     }
+    activeMixMultiplier = previousMixMultiplier;
+  }
+
+  function renderInstrumentMixer() {
+    const mixer = $("#instrumentMixer");
+    mixer.innerHTML = "";
+    INSTRUMENTS.forEach((instrument) => {
+      const mix = instrumentMix[instrument.id] || { volume: 1, mute: false };
+      const channel = document.createElement("div");
+      channel.className = "mixer-channel";
+
+      const label = document.createElement("div");
+      label.className = "mixer-channel-label";
+      label.innerHTML = '<span class="emoji">' + instrument.emoji + '</span><span>' + instrument.name + "</span>";
+
+      const volume = document.createElement("input");
+      volume.type = "range";
+      volume.min = "0";
+      volume.max = "100";
+      volume.value = String(Math.round(Math.max(0, Math.min(1, Number(mix.volume) || 0)) * 100));
+      volume.setAttribute("aria-label", instrument.name + " volume");
+      volume.addEventListener("input", () => {
+        instrumentMix[instrument.id].volume = Number(volume.value) / 100;
+      });
+
+      const mute = document.createElement("button");
+      mute.type = "button";
+      mute.className = "mute-button" + (mix.mute ? " active" : "");
+      mute.textContent = mix.mute ? "Muted" : "Mute";
+      mute.addEventListener("click", () => {
+        instrumentMix[instrument.id].mute = !instrumentMix[instrument.id].mute;
+        renderInstrumentMixer();
+      });
+
+      channel.append(label, volume, mute);
+      mixer.appendChild(channel);
+    });
   }
 
   function renderInstrumentBank() {
@@ -1290,6 +1340,20 @@
     $("#endMarkerReadout").textContent = "End: beat " + songEndStep;
   }
 
+  function currentMeasureStart() {
+    return Math.floor(Math.max(0, measureEditStep) / timeSignature) * timeSignature;
+  }
+
+  function refreshMeasureSelection() {
+    const start = currentMeasureStart();
+    const end = Math.min(SEQ_STEPS, start + timeSignature);
+    $("#sequencer [data-step]").forEach((el) => {
+      const step = Number(el.dataset.step);
+      el.classList.toggle("edit-measure", step >= start && step < end);
+    });
+    $("#measureReadout").textContent = "Measure " + (Math.floor(start / timeSignature) + 1) + " · beats " + (start + 1) + "–" + end;
+  }
+
   function renderSequencer() {
     const sequencer = $("#sequencer");
     sequencer.innerHTML = "";
@@ -1307,7 +1371,11 @@
       header.dataset.step = step;
       header.title = "Beat " + (step + 1);
       header.addEventListener("click", () => {
-        if (!endMarkerMode) return;
+        if (!endMarkerMode) {
+          measureEditStep = step;
+          refreshMeasureSelection();
+          return;
+        }
         pushMusicHistory();
         songEndStep = step + 1;
         endMarkerMode = false;
@@ -1336,6 +1404,8 @@
         cell.setAttribute("aria-label", pitch + ", beat " + (step + 1) + (instrument ? ", " + instrument.name : ", empty"));
 
         cell.addEventListener("click", () => {
+          measureEditStep = step;
+          refreshMeasureSelection();
           if (step >= songEndStep) {
             toast("Move the end marker later to use this beat");
             return;
@@ -1361,6 +1431,7 @@
 
     highlightedStep = -1;
     refreshPlayhead(true);
+    refreshMeasureSelection();
   }
 
   function refreshPlayhead(force = false) {
@@ -1450,6 +1521,46 @@
       renderFrameList();
     }
   }
+
+  $("#copyMeasureBtn").addEventListener("click", () => {
+    const start = currentMeasureStart();
+    measureClipboard = {
+      length: timeSignature,
+      rows: sequence.map((row) => row.slice(start, start + timeSignature))
+    };
+    $("#pasteMeasureBtn").disabled = false;
+    toast("Measure copied");
+  });
+
+  $("#pasteMeasureBtn").addEventListener("click", () => {
+    if (!measureClipboard) return;
+    const start = currentMeasureStart();
+    pushMusicHistory();
+    for (let row = 0; row < PITCHES.length; row += 1) {
+      for (let offset = 0; offset < timeSignature; offset += 1) {
+        const step = start + offset;
+        if (step >= SEQ_STEPS || step >= songEndStep) continue;
+        sequence[row][step] = offset < measureClipboard.length
+          ? (measureClipboard.rows[row][offset] || null)
+          : null;
+      }
+    }
+    renderSequencer();
+    toast("Measure pasted");
+  });
+
+  $("#clearMeasureBtn").addEventListener("click", () => {
+    const start = currentMeasureStart();
+    pushMusicHistory();
+    for (let row = 0; row < PITCHES.length; row += 1) {
+      for (let offset = 0; offset < timeSignature; offset += 1) {
+        const step = start + offset;
+        if (step < SEQ_STEPS && step < songEndStep) sequence[row][step] = null;
+      }
+    }
+    renderSequencer();
+    toast("Measure cleared");
+  });
 
   $("#playMusicBtn").addEventListener("click", startMusic);
   $("#stopMusicBtn").addEventListener("click", stopMusic);
@@ -1560,7 +1671,7 @@
   function songPayload() {
     return {
       format: "emojiro-paint-song",
-      version: 2,
+      version: 3,
       name: $("#songName").value || "My Emoji Song",
       tempo: Number($("#tempoSlider").value),
       timeSignature,
@@ -1569,6 +1680,7 @@
       pitches: PITCHES,
       steps: SEQ_STEPS,
       maxLayersPerBeat: MAX_LAYERS,
+      mixer: instrumentMix,
       sequence
     };
   }
@@ -1597,11 +1709,143 @@
     songEndStep = Math.max(1, Math.min(SEQ_STEPS, Number(song.endStep) || Math.min(SEQ_STEPS, (song.steps || 32))));
     loopMusic = song.loop !== false;
     endMarkerMode = false;
+    measureEditStep = 0;
+    if (song.mixer && typeof song.mixer === "object") {
+      INSTRUMENTS.forEach((instrument) => {
+        const saved = song.mixer[instrument.id];
+        instrumentMix[instrument.id] = {
+          volume: saved ? Math.max(0, Math.min(1, Number(saved.volume) || 0)) : 1,
+          mute: Boolean(saved && saved.mute)
+        };
+      });
+    } else {
+      instrumentMix = Object.fromEntries(
+        INSTRUMENTS.map((instrument) => [instrument.id, { volume: 1, mute: false }])
+      );
+    }
     $("#tempoOut").textContent = $("#tempoSlider").value + " BPM";
     $("#tempoReadout").textContent = $("#tempoSlider").value;
     updateComposerButtons();
+    renderInstrumentMixer();
     renderSequencer();
   }
+
+  function noteToMidi(note) {
+    const match = /^([A-G])(#?)(\d)$/.exec(note);
+    if (!match) return 60;
+    const semis = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+    return (Number(match[3]) + 1) * 12 + semis[match[1]] + (match[2] ? 1 : 0);
+  }
+
+  function midiVlq(value) {
+    let buffer = value & 0x7F;
+    const bytes = [];
+    while ((value >>= 7)) {
+      buffer <<= 8;
+      buffer |= ((value & 0x7F) | 0x80);
+    }
+    while (true) {
+      bytes.push(buffer & 0xFF);
+      if (buffer & 0x80) buffer >>= 8;
+      else break;
+    }
+    return bytes;
+  }
+
+  function pushBe16(bytes, value) {
+    bytes.push((value >> 8) & 255, value & 255);
+  }
+
+  function pushBe32(bytes, value) {
+    bytes.push((value >> 24) & 255, (value >> 16) & 255, (value >> 8) & 255, value & 255);
+  }
+
+  function midiTrackChunk(events, endTick) {
+    events.sort((a, b) => a.tick - b.tick || a.order - b.order);
+    const body = [];
+    let lastTick = 0;
+    events.forEach((event) => {
+      body.push(...midiVlq(Math.max(0, event.tick - lastTick)), ...event.bytes);
+      lastTick = event.tick;
+    });
+    body.push(...midiVlq(Math.max(0, endTick - lastTick)), 0xFF, 0x2F, 0x00);
+    const out = [];
+    ["M","T","r","k"].forEach((c) => out.push(c.charCodeAt(0)));
+    pushBe32(out, body.length);
+    out.push(...body);
+    return out;
+  }
+
+  function exportMidi() {
+    const PPQ = 480;
+    const noteLength = Math.round(PPQ * .82);
+    const tempo = Math.max(1, Math.round(60000000 / Number($("#tempoSlider").value)));
+    const endTick = songEndStep * PPQ;
+    const tracks = [];
+
+    const metaEvents = [
+      { tick: 0, order: 0, bytes: [0xFF, 0x51, 0x03, (tempo >> 16) & 255, (tempo >> 8) & 255, tempo & 255] },
+      { tick: 0, order: 1, bytes: [0xFF, 0x58, 0x04, timeSignature, 0x02, 24, 8] }
+    ];
+    tracks.push(midiTrackChunk(metaEvents, endTick));
+
+    const channels = [0,1,2,3,4,5,6,7,8,10,11,12,13,14,15];
+    const programMap = {
+      kalimba:108, lizard:80, star:9, trumpet:56, game:81, dog:79, cat:79,
+      pig:80, duck:81, baby:52, plane:27, ship:115, car:16, heart:33
+    };
+    let melodicChannelIndex = 0;
+
+    INSTRUMENTS.forEach((instrument) => {
+      const used = sequence.some((row) => row.slice(0, songEndStep).includes(instrument.id));
+      if (!used) return;
+
+      const channel = instrument.id === "drum" ? 9 : channels[melodicChannelIndex++];
+      const mix = instrumentMix[instrument.id] || { volume: 1, mute: false };
+      const volume = mix.mute ? 0 : Math.round(Math.max(0, Math.min(1, mix.volume)) * 127);
+      const events = [
+        { tick: 0, order: 0, bytes: [0xB0 | channel, 7, volume] }
+      ];
+      if (instrument.id !== "drum") {
+        events.push({ tick: 0, order: 1, bytes: [0xC0 | channel, programMap[instrument.id] ?? 0] });
+      }
+
+      PITCHES.forEach((pitch, row) => {
+        for (let step = 0; step < songEndStep; step += 1) {
+          if (sequence[row][step] !== instrument.id) continue;
+          const tick = step * PPQ;
+          const midiNote = instrument.id === "drum"
+            ? 36 + ((PITCHES.length - 1 - row) % 12)
+            : noteToMidi(pitch);
+          events.push({ tick, order: 3, bytes: [0x90 | channel, midiNote, 100] });
+          events.push({ tick: tick + noteLength, order: 2, bytes: [0x80 | channel, midiNote, 0] });
+        }
+      });
+
+      tracks.push(midiTrackChunk(events, endTick));
+    });
+
+    const bytes = [];
+    ["M","T","h","d"].forEach((c) => bytes.push(c.charCodeAt(0)));
+    pushBe32(bytes, 6);
+    pushBe16(bytes, 1);
+    pushBe16(bytes, tracks.length);
+    pushBe16(bytes, PPQ);
+    tracks.forEach((track) => bytes.push(...track));
+
+    const blob = new Blob([new Uint8Array(bytes)], { type: "audio/midi" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = safeFilename($("#songName").value || "emojiro-song") + ".mid";
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  $("#exportMidiBtn").addEventListener("click", () => {
+    exportMidi();
+    toast("MIDI exported");
+  });
 
   $("#saveSongBtn").addEventListener("click", () => {
     localStorage.setItem(SONG_KEY, JSON.stringify(songPayload()));
@@ -1970,6 +2214,7 @@
   renderCanvas();
   renderFrameList();
   renderInstrumentBank();
+  renderInstrumentMixer();
   updateComposerButtons();
   renderSequencer();
 })();
