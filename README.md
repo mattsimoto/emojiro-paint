@@ -7,8 +7,10 @@ Emojiro Paint is a touch-friendly browser creativity toy inspired by classic con
 ### 🎨 Paint Studio
 
 - 32 × 24 pixel-cell canvas
-- Pencil, eraser, flood fill, line, box, ellipse, and spray tools
+- Pencil, eraser, flood fill, line, box, ellipse, spray, and text tools
 - 18-color palette
+- Solid, checker, dots, and rainbow brush patterns
+- Optional filled rectangles and ellipses
 - 40 built-in emoji stamps
 - **8 × 8 Custom Stamp Workshop**
   - draw reusable pixel stamps
@@ -102,8 +104,6 @@ The project intentionally remains plain HTML, CSS, and JavaScript:
 
 ## Next milestones
 
-- Patterned brushes and filled shapes
-- Text tool
 - Stamp editing, duplication, and deletion
 - Image import with pixelation
 - Animation frame duration overrides
