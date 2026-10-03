@@ -24,6 +24,7 @@ jobs:
         run: |
           node --check app.js
           node --check tests/validate.mjs
+          node --check sw.js
 
       - name: Run DOM and selector smoke validation
         run: node tests/validate.mjs
@@ -34,6 +35,8 @@ jobs:
           test -f styles.css
           test -f paint-plus.css
           test -f composer.css
+          test -f project-library.css
           test -f app.js
           test -f manifest.webmanifest
           test -f favicon.svg
+          test -f sw.js
