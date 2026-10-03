@@ -43,6 +43,7 @@ Emojiro Paint is a touch-friendly browser creativity toy inspired by classic con
 - Looping and music undo
 - Measure selection plus copy, paste, and clear
 - Four 24-beat song sections with rename, copy/paste, duplicate, variation, clear, and reorder controls
+- Interactive Song Map with section tempo, note count, percussion count, duration, and 24-beat activity strips
 - Optional 40–480 BPM tempo override for each section
 - Section-only playback with optional section looping
 - Composer zoom plus compact notation mode for small screens
@@ -139,7 +140,7 @@ The project intentionally remains plain HTML, CSS, and JavaScript:
 
 - Section-level instrument palettes and mixer snapshots
 - Optional share-link compression for very dense songs
-- Song arrangement overview / timeline mode
+- Section-level mixer snapshots and instrument palettes
 - Cloud-sync option for project libraries
 - Original mini-games and interactive title-screen toys
 
