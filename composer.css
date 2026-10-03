@@ -757,3 +757,186 @@
     flex-direction: column;
   }
 }
+
+
+.section-settings {
+  display: grid;
+  grid-template-columns: auto minmax(260px, 1fr);
+  gap: 12px;
+  align-items: center;
+  margin-top: 10px;
+  padding: 9px 10px;
+  border: 2px dashed rgba(45,42,50,.2);
+  border-radius: 10px;
+  background: rgba(255,255,255,.48);
+}
+
+.section-settings .range-row {
+  margin: 0;
+}
+
+.pattern-lab,
+.percussion-card {
+  margin-bottom: 16px;
+  padding: 12px 14px;
+}
+
+.pattern-lab-head {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.4fr) minmax(180px, .8fr) minmax(180px, .8fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.pattern-lab-head > div:first-child,
+.percussion-head > div:first-child {
+  display: grid;
+  gap: 2px;
+}
+
+.pattern-lab-head span,
+.percussion-head span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.pattern-lab-head .range-row {
+  margin: 0;
+}
+
+.percussion-head {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.percussion-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+}
+
+.percussion-actions select {
+  min-height: 36px;
+  padding: 7px 9px;
+  border: 2px solid var(--ink);
+  border-radius: 9px;
+  background: #fff;
+  font-weight: 800;
+}
+
+.percussion-scroll {
+  overflow-x: auto;
+  margin-top: 10px;
+  padding-bottom: 5px;
+}
+
+.percussion-grid {
+  --drum-cell: 34px;
+  display: grid;
+  grid-template-columns: 105px repeat(24, var(--drum-cell));
+  width: max-content;
+  min-width: 100%;
+  gap: 2px;
+  align-items: center;
+}
+
+.percussion-label,
+.percussion-step,
+.percussion-cell {
+  min-height: 32px;
+  border: 2px solid var(--ink);
+  border-radius: 7px;
+  background: #fff;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.percussion-label {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px;
+  background: #fff8e6;
+}
+
+.percussion-step {
+  display: grid;
+  place-items: center;
+  min-width: var(--drum-cell);
+  color: var(--muted);
+  font-size: 9px;
+  cursor: default;
+}
+
+.percussion-cell {
+  display: grid;
+  place-items: center;
+  min-width: var(--drum-cell);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.percussion-cell.active {
+  background: var(--yellow);
+  box-shadow: inset 0 0 0 2px var(--orange);
+}
+
+.percussion-cell.measure {
+  border-left-width: 4px;
+  border-left-color: var(--blue);
+}
+
+.percussion-cell.playing {
+  outline: 3px solid var(--orange);
+  outline-offset: -2px;
+}
+
+.section-button .tempo-badge {
+  margin-top: 3px;
+  color: var(--orange);
+  font-size: 9px;
+}
+
+@media (max-width: 900px) {
+  .pattern-lab-head {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .pattern-lab-head > div:first-child {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 650px) {
+  .section-settings {
+    grid-template-columns: 1fr;
+  }
+
+  .pattern-lab-head {
+    grid-template-columns: 1fr;
+  }
+
+  .pattern-lab-head > div:first-child {
+    grid-column: auto;
+  }
+
+  .percussion-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .percussion-actions {
+    align-items: stretch;
+  }
+
+  .percussion-actions select,
+  .percussion-actions .button {
+    flex: 1 1 100%;
+  }
+}
