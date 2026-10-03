@@ -39,6 +39,11 @@ const requiredIds = [
   "copySectionBtn",
   "instrumentMixer",
   "exportWavBtn",
+  "projectLibraryDialog",
+  "projectNameInput",
+  "projectLibraryList",
+  "saveNamedProjectBtn",
+  "importProjectInput",
   "sequencer"
 ];
 
