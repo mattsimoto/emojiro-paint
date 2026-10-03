@@ -14,8 +14,9 @@ Emojiro Paint is a touch-friendly browser creativity toy inspired by classic con
 - 40 built-in emoji stamps
 - **8 × 8 Custom Stamp Workshop**
   - draw reusable pixel stamps
-  - name and save up to 24 custom stamps
+  - create, edit, duplicate, and delete up to 24 custom stamps
   - stamps persist on the device and inside saved projects
+- Image import with automatic 32 × 24 palette pixelation
 - Undo and redo
 - PNG export
 - Mouse, pen, and touch input
@@ -24,9 +25,12 @@ Emojiro Paint is a touch-friendly browser creativity toy inspired by classic con
 
 - Add, duplicate, delete, and reorder frames
 - Adjustable 1–12 FPS flipbook preview
+- Per-frame 1–8 beat timing
 - Optional previous-frame onion skin
-- Optional music playback during animation preview
-- Frame thumbnails for quick navigation
+- Beat-locked animation playback driven by the Emoji Composer timeline
+- Frame thumbnails with beat-duration badges
+- Animated GIF export
+- WebM animation export where browser-supported
 
 ### 🎵 Emoji Composer
 
@@ -37,9 +41,12 @@ Emojiro Paint is a touch-friendly browser creativity toy inspired by classic con
 - Up to three simultaneous notes per beat
 - Placeable end marker
 - Looping and music undo
+- Measure selection plus copy, paste, and clear
+- Per-instrument volume and mute mixer
 - Three original demo songs
 - Song save/load in local storage
 - JSON song import/export
+- Standard MIDI file export
 
 ### 💾 Project storage
 
@@ -83,11 +90,11 @@ The Custom Stamp Workshop creates reusable 8 × 8 pixel designs. Transparent pix
 
 ### Animation
 
-Use the frame strip to add, duplicate, delete, reorder, or select frames. **Onion skin** shows the previous frame faintly behind the current frame. **Play song with animation preview** starts the current composition with the flipbook preview.
+Use the frame strip to add, duplicate, delete, reorder, or select frames. **Onion skin** shows the previous frame faintly behind the current frame. Set **Frame beats** per frame and enable **Beat-lock animation to composer** to drive the animation directly from the music sequencer's beat clock.
 
 ### Music
 
-Choose an emoji instrument, then place it on the staff. Each beat supports up to three simultaneous notes. Selecting the same instrument in the same cell removes it. Press **Space** to play or stop while Music Maker is active.
+Choose an emoji instrument, then place it on the staff. Each beat supports up to three simultaneous notes. Selecting the same instrument in the same cell removes it. Tap any beat to select its measure, then copy, paste, or clear the measure. The mixer controls each emoji instrument independently. Press **Space** to play or stop while Music Maker is active.
 
 ## Architecture
 
@@ -104,15 +111,10 @@ The project intentionally remains plain HTML, CSS, and JavaScript:
 
 ## Next milestones
 
-- Stamp editing, duplication, and deletion
-- Image import with pixelation
-- Animation frame duration overrides
-- Animation + composition timeline synchronization
-- Animated GIF/WebM export
 - WAV/audio recording export
-- MIDI export
-- Song sections and measure copy/paste
-- Per-instrument volume and mute
+- Song sections and section duplication
+- Per-instrument solo and pan
+- Composer zoom and compact mobile notation view
 - Autosave and named project gallery
 - Offline service worker support
 - Shareable song/project files
