@@ -113,6 +113,8 @@
   let stampEditorColor = COLORS[2];
   let stampEditorPainting = false;
   let stampEditorPaintValue = null;
+  let brushPattern = "solid";
+  let fillShapes = false;
 
   function loadCustomStamps() {
     try {
@@ -332,9 +334,25 @@
     frame[cellIndex(x, y)] = value;
   }
 
+  function patternedColorAt(x, y) {
+    if (brushPattern === "checker") return (x + y) % 2 === 0 ? activeColor : null;
+    if (brushPattern === "dots") return (x % 2 === 0 && y % 2 === 0) ? activeColor : null;
+    if (brushPattern === "rainbow") {
+      const rainbow = ["#e45b5b", "#f28c45", "#f7d25c", "#74b86f", "#55a9d6", "#7d63bf", "#d56ca6"];
+      return rainbow[Math.abs(x + y) % rainbow.length];
+    }
+    return activeColor;
+  }
+
+  function paintColorCell(x, y, frame = currentFrame()) {
+    const color = patternedColorAt(x, y);
+    if (!color) return;
+    setCell(x, y, { color, emoji: null }, frame);
+  }
+
   function paintAt(x, y) {
     if (activeTool === "pencil") {
-      setCell(x, y, { color: activeColor, emoji: null });
+      paintColorCell(x, y);
     } else if (activeTool === "stamp") {
       setCell(x, y, { color: null, emoji: activeStamp });
     } else if (activeTool === "eraser") {
@@ -348,9 +366,16 @@
         const sx = Math.round(x + Math.cos(angle) * radius);
         const sy = Math.round(y + Math.sin(angle) * radius);
         if (sx >= 0 && sx < COLS && sy >= 0 && sy < ROWS) {
-          setCell(sx, sy, { color: activeColor, emoji: null });
+          paintColorCell(sx, sy);
         }
       }
+    } else if (activeTool === "text") {
+      const text = Array.from($("#paintTextInput").value || "");
+      text.forEach((char, index) => {
+        const tx = x + index;
+        if (tx >= COLS) return;
+        if (char !== " ") setCell(tx, y, { color: null, emoji: char });
+      });
     } else if (activeTool === "customstamp") {
       const stamp = activeCustomStamp();
       if (!stamp) {
@@ -399,7 +424,7 @@
     let err = dx + dy;
 
     while (true) {
-      setCell(x0, y0, { color: activeColor, emoji: null }, frame);
+      paintColorCell(x0, y0, frame);
       if (x0 === x1 && y0 === y1) break;
       const e2 = 2 * err;
       if (e2 >= dy) {
@@ -419,13 +444,20 @@
     const top = Math.min(y0, y1);
     const bottom = Math.max(y0, y1);
 
+    if (fillShapes) {
+      for (let y = top; y <= bottom; y += 1) {
+        for (let x = left; x <= right; x += 1) paintColorCell(x, y, frame);
+      }
+      return;
+    }
+
     for (let x = left; x <= right; x += 1) {
-      setCell(x, top, { color: activeColor, emoji: null }, frame);
-      setCell(x, bottom, { color: activeColor, emoji: null }, frame);
+      paintColorCell(x, top, frame);
+      paintColorCell(x, bottom, frame);
     }
     for (let y = top; y <= bottom; y += 1) {
-      setCell(left, y, { color: activeColor, emoji: null }, frame);
-      setCell(right, y, { color: activeColor, emoji: null }, frame);
+      paintColorCell(left, y, frame);
+      paintColorCell(right, y, frame);
     }
   }
 
@@ -434,12 +466,28 @@
     const cy = (y0 + y1) / 2;
     const rx = Math.max(.5, Math.abs(x1 - x0) / 2);
     const ry = Math.max(.5, Math.abs(y1 - y0) / 2);
+
+    if (fillShapes) {
+      const left = Math.floor(cx - rx);
+      const right = Math.ceil(cx + rx);
+      const top = Math.floor(cy - ry);
+      const bottom = Math.ceil(cy + ry);
+      for (let y = top; y <= bottom; y += 1) {
+        for (let x = left; x <= right; x += 1) {
+          const dx = (x - cx) / rx;
+          const dy = (y - cy) / ry;
+          if (dx * dx + dy * dy <= 1) paintColorCell(x, y, frame);
+        }
+      }
+      return;
+    }
+
     const samples = Math.max(24, Math.ceil(Math.PI * (rx + ry) * 2.2));
     for (let i = 0; i < samples; i += 1) {
       const angle = (i / samples) * Math.PI * 2;
       const x = Math.round(cx + Math.cos(angle) * rx);
       const y = Math.round(cy + Math.sin(angle) * ry);
-      setCell(x, y, { color: activeColor, emoji: null }, frame);
+      paintColorCell(x, y, frame);
     }
   }
 
@@ -607,6 +655,14 @@
     redoStack = [];
     renderCanvas();
     renderFrameList();
+  });
+
+  $("#brushPatternSelect").addEventListener("change", (event) => {
+    brushPattern = event.target.value;
+  });
+
+  $("#fillShapeToggle").addEventListener("change", (event) => {
+    fillShapes = event.target.checked;
   });
 
   function moveActiveFrame(direction) {
@@ -1350,6 +1406,9 @@
         frameSpeed: Number($("#frameSpeed").value),
         onionSkin,
         syncMusic,
+        brushPattern,
+        fillShapes,
+        paintText: $("#paintTextInput").value,
         customStamps,
         activeCustomStampId
       },
@@ -1375,8 +1434,13 @@
         $("#frameSpeedOut").textContent = $("#frameSpeed").value + " fps";
         onionSkin = Boolean(project.paint.onionSkin);
         syncMusic = Boolean(project.paint.syncMusic);
+        brushPattern = ["solid", "checker", "dots", "rainbow"].includes(project.paint.brushPattern) ? project.paint.brushPattern : "solid";
+        fillShapes = Boolean(project.paint.fillShapes);
         $("#onionSkinToggle").checked = onionSkin;
         $("#syncMusicToggle").checked = syncMusic;
+        $("#brushPatternSelect").value = brushPattern;
+        $("#fillShapeToggle").checked = fillShapes;
+        if (typeof project.paint.paintText === "string") $("#paintTextInput").value = project.paint.paintText.slice(0, 24);
         if (Array.isArray(project.paint.customStamps)) {
           customStamps = project.paint.customStamps
             .filter((stamp) => stamp && Array.isArray(stamp.pixels) && stamp.pixels.length === 64)
@@ -1430,6 +1494,8 @@
   renderStampEditorColors();
   $("#onionSkinToggle").checked = onionSkin;
   $("#syncMusicToggle").checked = syncMusic;
+  $("#brushPatternSelect").value = brushPattern;
+  $("#fillShapeToggle").checked = fillShapes;
   renderCanvas();
   renderFrameList();
   renderInstrumentBank();
