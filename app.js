@@ -1098,8 +1098,20 @@
   let sectionClipboard = null;
   let activeMixMultiplier = 1;
   let activeMixPan = 0;
+  let activeMixFilter = 0;
+  let activeMixDelay = 0;
+  let captureDestination = null;
+  let suppressLiveOutput = false;
+  let sectionLoopEnabled = false;
+  let playbackMode = "song";
+  let playbackStartStep = 0;
+  let playbackEndStep = SEQ_STEPS;
+  let composerZoom = 38;
+  let composerCompact = false;
   let instrumentMix = Object.fromEntries(
-    INSTRUMENTS.map((instrument) => [instrument.id, { volume: 1, mute: false, solo: false, pan: 0 }])
+    INSTRUMENTS.map((instrument) => [instrument.id, {
+      volume: 1, mute: false, solo: false, pan: 0, filter: 0, delay: 0
+    }])
   );
 
   function makeSequence() {
@@ -1127,6 +1139,12 @@
     return 440 * Math.pow(2, (midi - 69) / 12);
   }
 
+  function connectAudioOutputs(node) {
+    const ac = ensureAudio();
+    if (!suppressLiveOutput) node.connect(ac.destination);
+    if (captureDestination) node.connect(captureDestination);
+  }
+
   function connectGain(gainValue, when, duration) {
     const ac = ensureAudio();
     const gain = ac.createGain();
@@ -1136,14 +1154,42 @@
       when + Math.min(.02, Math.max(.005, duration * .18))
     );
     gain.gain.exponentialRampToValueAtTime(0.0001, when + duration);
+
+    let output = gain;
+
+    if (activeMixFilter > .005) {
+      const filter = ac.createBiquadFilter();
+      filter.type = "lowpass";
+      const cutoff = 19000 * Math.pow(0.055, activeMixFilter);
+      filter.frequency.setValueAtTime(Math.max(450, cutoff), when);
+      filter.Q.setValueAtTime(.7 + activeMixFilter * 2.5, when);
+      output.connect(filter);
+      output = filter;
+    }
+
     if (typeof ac.createStereoPanner === "function") {
       const panner = ac.createStereoPanner();
       panner.pan.setValueAtTime(Math.max(-1, Math.min(1, activeMixPan)), when);
-      gain.connect(panner);
-      panner.connect(ac.destination);
-    } else {
-      gain.connect(ac.destination);
+      output.connect(panner);
+      output = panner;
     }
+
+    connectAudioOutputs(output);
+
+    if (activeMixDelay > .005) {
+      const delay = ac.createDelay(1);
+      const feedback = ac.createGain();
+      const wet = ac.createGain();
+      delay.delayTime.setValueAtTime(.14 + activeMixDelay * .34, when);
+      feedback.gain.setValueAtTime(.12 + activeMixDelay * .5, when);
+      wet.gain.setValueAtTime(.08 + activeMixDelay * .32, when);
+      output.connect(delay);
+      delay.connect(feedback);
+      feedback.connect(delay);
+      delay.connect(wet);
+      connectAudioOutputs(wet);
+    }
+
     return gain;
   }
 
@@ -1185,13 +1231,19 @@
     const start = when == null ? ac.currentTime : when;
     const instrument = instrumentById(id);
     if (!instrument) return;
-    const mix = instrumentMix[id] || { volume: 1, mute: false, solo: false, pan: 0 };
+    const mix = instrumentMix[id] || {
+      volume: 1, mute: false, solo: false, pan: 0, filter: 0, delay: 0
+    };
     const anySolo = Object.values(instrumentMix).some((entry) => entry && entry.solo);
     if (mix.mute || (anySolo && !mix.solo) || Number(mix.volume) <= 0) return;
     const previousMixMultiplier = activeMixMultiplier;
     const previousMixPan = activeMixPan;
+    const previousMixFilter = activeMixFilter;
+    const previousMixDelay = activeMixDelay;
     activeMixMultiplier = Math.max(0, Math.min(1, Number(mix.volume) || 0));
     activeMixPan = Math.max(-1, Math.min(1, Number(mix.pan) || 0));
+    activeMixFilter = Math.max(0, Math.min(1, Number(mix.filter) || 0));
+    activeMixDelay = Math.max(0, Math.min(1, Number(mix.delay) || 0));
 
     switch (instrument.type) {
       case "kalimba": {
@@ -1276,13 +1328,17 @@
     }
     activeMixMultiplier = previousMixMultiplier;
     activeMixPan = previousMixPan;
+    activeMixFilter = previousMixFilter;
+    activeMixDelay = previousMixDelay;
   }
 
   function renderInstrumentMixer() {
     const mixer = $("#instrumentMixer");
     mixer.innerHTML = "";
     INSTRUMENTS.forEach((instrument) => {
-      const mix = instrumentMix[instrument.id] || { volume: 1, mute: false, solo: false, pan: 0 };
+      const mix = instrumentMix[instrument.id] || {
+        volume: 1, mute: false, solo: false, pan: 0, filter: 0, delay: 0
+      };
       const channel = document.createElement("div");
       channel.className = "mixer-channel";
 
@@ -1317,7 +1373,9 @@
       pan.value = String(Math.round(Math.max(-1, Math.min(1, Number(mix.pan) || 0)) * 100));
       pan.setAttribute("aria-label", instrument.name + " pan");
       const panOut = document.createElement("output");
-      const panLabel = () => pan.value === "0" ? "Center" : (Number(pan.value) < 0 ? "L " + Math.abs(Number(pan.value)) : "R " + pan.value);
+      const panLabel = () => pan.value === "0"
+        ? "Center"
+        : (Number(pan.value) < 0 ? "L " + Math.abs(Number(pan.value)) : "R " + pan.value);
       panOut.textContent = panLabel();
       pan.addEventListener("input", () => {
         instrumentMix[instrument.id].pan = Number(pan.value) / 100;
@@ -1347,7 +1405,33 @@
       });
 
       buttons.append(solo, mute);
-      channel.append(label, volumeWrap, panWrap, buttons);
+
+      const effects = document.createElement("div");
+      effects.className = "mixer-effect-row";
+
+      const makeEffect = (name, field) => {
+        const wrap = document.createElement("label");
+        wrap.className = "mixer-effect";
+        const title = document.createElement("span");
+        title.textContent = name;
+        const input = document.createElement("input");
+        input.type = "range";
+        input.min = "0";
+        input.max = "100";
+        input.value = String(Math.round(Math.max(0, Math.min(1, Number(mix[field]) || 0)) * 100));
+        input.setAttribute("aria-label", instrument.name + " " + name.toLowerCase());
+        const out = document.createElement("output");
+        out.textContent = input.value + "%";
+        input.addEventListener("input", () => {
+          instrumentMix[instrument.id][field] = Number(input.value) / 100;
+          out.textContent = input.value + "%";
+        });
+        wrap.append(title, input, out);
+        return wrap;
+      };
+
+      effects.append(makeEffect("Tone", "filter"), makeEffect("Echo", "delay"));
+      channel.append(label, volumeWrap, panWrap, buttons, effects);
       mixer.appendChild(channel);
     });
   }
@@ -1544,10 +1628,22 @@
     $("#measureReadout").textContent = "Measure " + (Math.floor(start / timeSignature) + 1) + " · beats " + (start + 1) + "–" + end;
   }
 
+  function applyComposerView() {
+    const sequencer = $("#sequencer");
+    sequencer.classList.toggle("compact", composerCompact);
+    sequencer.style.setProperty("--cell", composerCompact ? "30px" : composerZoom + "px");
+    sequencer.style.gridTemplateColumns = (composerCompact ? "52px" : "66px") +
+      " repeat(" + SEQ_STEPS + ", var(--cell))";
+    $("#composerZoom").value = composerZoom;
+    $("#composerZoom").disabled = composerCompact;
+    $("#composerZoomOut").textContent = composerCompact ? "Compact" : composerZoom + " px";
+    $("#compactComposerToggle").checked = composerCompact;
+  }
+
   function renderSequencer() {
     const sequencer = $("#sequencer");
     sequencer.innerHTML = "";
-    sequencer.style.gridTemplateColumns = "66px repeat(" + SEQ_STEPS + ", var(--cell))";
+    applyComposerView();
 
     const corner = document.createElement("div");
     corner.className = "seq-corner";
@@ -1673,9 +1769,10 @@
 
     musicTimer = setTimeout(() => {
       const next = currentStep + 1;
-      if (next >= songEndStep) {
-        if (loopMusic) {
-          currentStep = 0;
+      if (next >= playbackEndStep) {
+        const shouldLoop = playbackMode === "section" ? sectionLoopEnabled : loopMusic;
+        if (shouldLoop) {
+          currentStep = playbackStartStep;
         } else {
           stopMusic();
           if (syncedAnimationPreview) stopFramePreview();
@@ -1690,12 +1787,23 @@
     }, delay);
   }
 
-  function startMusic() {
+  function startMusic(mode = "song") {
     if (isMusicPlaying) return;
-    if (currentStep >= songEndStep) currentStep = 0;
+    playbackMode = mode === "section" ? "section" : "song";
+    playbackStartStep = playbackMode === "section" ? sectionStart() : 0;
+    playbackEndStep = playbackMode === "section"
+      ? Math.min(songEndStep, sectionStart() + SECTION_LENGTH)
+      : songEndStep;
+
+    if (playbackEndStep <= playbackStartStep) {
+      toast("This section is beyond the song end marker");
+      return;
+    }
+
+    currentStep = playbackStartStep;
     ensureAudio();
     isMusicPlaying = true;
-    $("#playMusicBtn").textContent = "▶ Playing";
+    $("#playMusicBtn").textContent = playbackMode === "section" ? "▶ Section" : "▶ Playing";
     playStep(currentStep);
     refreshPlayhead();
     scheduleNextStep();
@@ -1759,8 +1867,19 @@
     toast("Measure cleared");
   });
 
-  $("#playMusicBtn").addEventListener("click", startMusic);
-  $("#stopMusicBtn").addEventListener("click", stopMusic);
+  $("#playMusicBtn").addEventListener("click", () => startMusic("song"));
+  $("#stopMusicBtn").addEventListener("click", () => stopMusic());
+
+  $("#playSectionBtn").addEventListener("click", () => {
+    stopMusic();
+    startMusic("section");
+  });
+
+  $("#loopSectionBtn").addEventListener("click", () => {
+    sectionLoopEnabled = !sectionLoopEnabled;
+    $("#loopSectionBtn").classList.toggle("active", sectionLoopEnabled);
+    $("#loopSectionBtn").setAttribute("aria-pressed", String(sectionLoopEnabled));
+  });
 
   $("#loopMusicBtn").addEventListener("click", () => {
     loopMusic = !loopMusic;
@@ -1806,6 +1925,21 @@
   $("#tempoSlider").addEventListener("input", (event) => {
     $("#tempoOut").textContent = event.target.value + " BPM";
     $("#tempoReadout").textContent = event.target.value;
+  });
+
+  $("#composerZoom").addEventListener("input", (event) => {
+    composerZoom = Number(event.target.value);
+    applyComposerView();
+  });
+
+  $("#compactComposerToggle").addEventListener("change", (event) => {
+    composerCompact = event.target.checked;
+    applyComposerView();
+  });
+
+  $("#jumpToSectionBtn").addEventListener("click", () => {
+    const header = $('.seq-step[data-step="' + sectionStart() + '"]');
+    if (header) header.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "start" });
   });
 
   $("#clearMusicBtn").addEventListener("click", () => {
@@ -1872,7 +2006,7 @@
   function songPayload() {
     return {
       format: "emojiro-paint-song",
-      version: 4,
+      version: 5,
       name: $("#songName").value || "My Emoji Song",
       tempo: Number($("#tempoSlider").value),
       timeSignature,
@@ -1882,6 +2016,8 @@
       steps: SEQ_STEPS,
       maxLayersPerBeat: MAX_LAYERS,
       sections: sectionNames.slice(),
+      sectionLoop: sectionLoopEnabled,
+      view: { zoom: composerZoom, compact: composerCompact },
       mixer: instrumentMix,
       sequence
     };
@@ -1923,16 +2059,26 @@
           volume: saved ? Math.max(0, Math.min(1, Number(saved.volume) || 0)) : 1,
           mute: Boolean(saved && saved.mute),
           solo: Boolean(saved && saved.solo),
-          pan: saved ? Math.max(-1, Math.min(1, Number(saved.pan) || 0)) : 0
+          pan: saved ? Math.max(-1, Math.min(1, Number(saved.pan) || 0)) : 0,
+          filter: saved ? Math.max(0, Math.min(1, Number(saved.filter) || 0)) : 0,
+          delay: saved ? Math.max(0, Math.min(1, Number(saved.delay) || 0)) : 0
         };
       });
     } else {
       instrumentMix = Object.fromEntries(
-        INSTRUMENTS.map((instrument) => [instrument.id, { volume: 1, mute: false, solo: false, pan: 0 }])
+        INSTRUMENTS.map((instrument) => [instrument.id, {
+          volume: 1, mute: false, solo: false, pan: 0, filter: 0, delay: 0
+        }])
       );
     }
+    sectionLoopEnabled = Boolean(song.sectionLoop);
+    $("#loopSectionBtn").classList.toggle("active", sectionLoopEnabled);
+    $("#loopSectionBtn").setAttribute("aria-pressed", String(sectionLoopEnabled));
+    composerZoom = song.view ? Math.max(28, Math.min(58, Number(song.view.zoom) || 38)) : 38;
+    composerCompact = Boolean(song.view && song.view.compact);
     $("#tempoOut").textContent = $("#tempoSlider").value + " BPM";
     $("#tempoReadout").textContent = $("#tempoSlider").value;
+    applyComposerView();
     updateComposerButtons();
     renderSectionBar();
     renderInstrumentMixer();
@@ -2010,7 +2156,7 @@
       if (!used) return;
 
       const channel = instrument.id === "drum" ? 9 : channels[melodicChannelIndex++];
-      const mix = instrumentMix[instrument.id] || { volume: 1, mute: false, solo: false, pan: 0 };
+      const mix = instrumentMix[instrument.id] || { volume: 1, mute: false, solo: false, pan: 0, filter: 0, delay: 0 };
       const anySolo = Object.values(instrumentMix).some((entry) => entry && entry.solo);
       const audible = !mix.mute && (!anySolo || mix.solo);
       const volume = audible ? Math.round(Math.max(0, Math.min(1, mix.volume)) * 127) : 0;
@@ -2105,7 +2251,7 @@
       for (let row = 0; row < PITCHES.length; row += 1) {
         const id = sequence[row][step];
         if (!id) continue;
-        const mix = instrumentMix[id] || { volume: 1, mute: false, solo: false, pan: 0 };
+        const mix = instrumentMix[id] || { volume: 1, mute: false, solo: false, pan: 0, filter: 0, delay: 0 };
         if (mix.mute || (anySolo && !mix.solo) || Number(mix.volume) <= 0) continue;
 
         const config = offlineVoiceConfig(id, noteToFrequency(PITCHES[row]));
@@ -2552,7 +2698,7 @@
 
   function blankProjectPayload() {
     const mix = Object.fromEntries(
-      INSTRUMENTS.map((instrument) => [instrument.id, { volume: 1, mute: false, solo: false, pan: 0 }])
+      INSTRUMENTS.map((instrument) => [instrument.id, { volume: 1, mute: false, solo: false, pan: 0, filter: 0, delay: 0 }])
     );
     return {
       format: "emojiro-paint-project",
@@ -2574,7 +2720,7 @@
       },
       music: {
         format: "emojiro-paint-song",
-        version: 4,
+        version: 5,
         name: "My Emoji Song",
         tempo: 120,
         timeSignature: 4,
@@ -2584,6 +2730,8 @@
         steps: SEQ_STEPS,
         maxLayersPerBeat: MAX_LAYERS,
         sections: ["Section A", "Section B", "Section C", "Section D"],
+        sectionLoop: false,
+        view: { zoom: 38, compact: false },
         mixer: mix,
         sequence: makeSequence()
       }
@@ -2830,7 +2978,7 @@
     if (event.code === "Space" && $("#musicPanel").classList.contains("active") && document.activeElement.tagName !== "INPUT") {
       event.preventDefault();
       if (isMusicPlaying) stopMusic();
-      else startMusic();
+      else startMusic("song");
     }
   });
 
