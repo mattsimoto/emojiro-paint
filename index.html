@@ -214,10 +214,19 @@
             </label>
           </div>
           <div id="sectionBar" class="section-bar" aria-label="Song sections"></div>
+          <div class="section-settings">
+            <label class="check-row"><input id="sectionTempoToggle" type="checkbox" /> Custom section tempo</label>
+            <label class="range-row">
+              <span>Section BPM</span>
+              <input id="sectionTempoSlider" type="range" min="40" max="480" value="120" disabled />
+              <output id="sectionTempoOut">Global 120</output>
+            </label>
+          </div>
           <div class="section-actions">
             <button id="copySectionBtn" class="button small" type="button">📋 Copy</button>
             <button id="pasteSectionBtn" class="button small" type="button" disabled>📥 Paste</button>
             <button id="duplicateSectionBtn" class="button small" type="button">⧉ Duplicate →</button>
+            <button id="variationSectionBtn" class="button small" type="button">✨ Variation →</button>
             <button id="moveSectionLeftBtn" class="button small" type="button">← Move</button>
             <button id="moveSectionRightBtn" class="button small" type="button">Move →</button>
             <button id="clearSectionBtn" class="button small danger" type="button">🧽 Clear</button>
@@ -323,6 +332,48 @@
             <button id="liveRecordBtn" class="button small toggle-button" type="button" aria-pressed="false">⏺ Record off</button>
           </div>
           <div id="liveKeyboard" class="live-keyboard" aria-label="Live note keyboard"></div>
+        </div>
+
+        <div class="pattern-lab card">
+          <div class="pattern-lab-head">
+            <div>
+              <strong>Pattern Lab</strong>
+              <span>Generate melody ideas and add repeatable timing variation.</span>
+            </div>
+            <label class="range-row">
+              <span>Density</span>
+              <input id="randomDensity" type="range" min="10" max="80" value="35" />
+              <output id="randomDensityOut">35%</output>
+            </label>
+            <label class="range-row">
+              <span>Humanize</span>
+              <input id="humanizeSlider" type="range" min="0" max="60" value="0" />
+              <output id="humanizeOut">0 ms</output>
+            </label>
+            <button id="randomizeSectionBtn" class="button small primary" type="button">🎲 Add random melody</button>
+          </div>
+        </div>
+
+        <div class="percussion-card card">
+          <div class="percussion-head">
+            <div>
+              <strong>Percussion Lanes</strong>
+              <span>Independent rhythm lanes for the selected 24-beat section.</span>
+            </div>
+            <div class="percussion-actions">
+              <select id="drumPresetSelect" aria-label="Percussion preset">
+                <option value="four">Four on the floor</option>
+                <option value="backbeat">Backbeat</option>
+                <option value="bounce">Emoji bounce</option>
+                <option value="sparse">Sparse</option>
+              </select>
+              <button id="applyDrumPresetBtn" class="button small primary" type="button">🥁 Apply</button>
+              <button id="clearDrumsBtn" class="button small danger" type="button">Clear drums</button>
+            </div>
+          </div>
+          <div class="percussion-scroll">
+            <div id="percussionGrid" class="percussion-grid" aria-label="Percussion pattern editor"></div>
+          </div>
         </div>
 
         <div class="composer-view card">
