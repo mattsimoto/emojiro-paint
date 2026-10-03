@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="styles.css" />
   <link rel="stylesheet" href="composer.css" />
   <link rel="stylesheet" href="paint-plus.css" />
+  <link rel="stylesheet" href="project-library.css" />
 </head>
 <body>
   <div class="app-shell">
@@ -23,8 +24,10 @@
         </div>
       </div>
       <div class="top-actions">
+        <span id="autosaveStatus" class="autosave-status">Autosave on</span>
         <button id="saveProjectBtn" class="button small" type="button">💾 Save</button>
         <button id="loadProjectBtn" class="button small" type="button">📂 Load</button>
+        <button id="projectsBtn" class="button small primary" type="button">🗃️ Projects</button>
       </div>
     </header>
 
@@ -315,6 +318,43 @@
         </div>
       </section>
     </main>
+
+    <dialog id="projectLibraryDialog" class="project-dialog">
+      <div class="project-library card">
+        <div class="project-library-head">
+          <div>
+            <h2>Project Library</h2>
+            <p>Save named Emojiro projects on this device or move them between devices as JSON files.</p>
+          </div>
+          <button id="closeProjectsBtn" class="button small" type="button">✕ Close</button>
+        </div>
+
+        <div class="project-save-row">
+          <label>
+            Project name
+            <input id="projectNameInput" type="text" maxlength="40" value="Untitled Emojiro Project" />
+          </label>
+          <button id="saveNamedProjectBtn" class="button primary" type="button">💾 Save to library</button>
+          <button id="newProjectBtn" class="button" type="button">✨ New project</button>
+        </div>
+
+        <div class="project-file-actions">
+          <button id="exportProjectBtn" class="button small" type="button">⬇️ Export current project</button>
+          <label class="button small file-button">
+            ⬆️ Import project
+            <input id="importProjectInput" type="file" accept=".json,application/json" />
+          </label>
+        </div>
+
+        <div class="project-library-section">
+          <div class="project-library-title">
+            <h3>Saved projects</h3>
+            <span id="projectCount">0 projects</span>
+          </div>
+          <div id="projectLibraryList" class="project-library-list"></div>
+        </div>
+      </div>
+    </dialog>
 
     <dialog id="stampMakerDialog" class="stamp-dialog">
       <form method="dialog" class="stamp-maker card">
