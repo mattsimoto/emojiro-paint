@@ -189,6 +189,28 @@
           </div>
         </div>
 
+        <div class="section-editor card">
+          <div class="section-editor-head">
+            <div>
+              <strong>Song Sections</strong>
+              <span>Four 24-beat blocks across the 96-beat song</span>
+            </div>
+            <label>
+              Section name
+              <input id="sectionNameInput" type="text" maxlength="16" value="Section A" />
+            </label>
+          </div>
+          <div id="sectionBar" class="section-bar" aria-label="Song sections"></div>
+          <div class="section-actions">
+            <button id="copySectionBtn" class="button small" type="button">📋 Copy</button>
+            <button id="pasteSectionBtn" class="button small" type="button" disabled>📥 Paste</button>
+            <button id="duplicateSectionBtn" class="button small" type="button">⧉ Duplicate →</button>
+            <button id="moveSectionLeftBtn" class="button small" type="button">← Move</button>
+            <button id="moveSectionRightBtn" class="button small" type="button">Move →</button>
+            <button id="clearSectionBtn" class="button small danger" type="button">🧽 Clear</button>
+          </div>
+        </div>
+
         <div class="measure-editor card">
           <div>
             <strong>Measure editor</strong>
@@ -253,7 +275,8 @@
             <button id="saveSongBtn" class="button" type="button">💾 Save song</button>
             <button id="loadSongBtn" class="button" type="button">📂 Load song</button>
             <button id="exportSongBtn" class="button" type="button">⬇️ Export JSON</button>
-            <button id="exportMidiBtn" class="button primary" type="button">🎹 Export MIDI</button>
+            <button id="exportMidiBtn" class="button" type="button">🎹 Export MIDI</button>
+            <button id="exportWavBtn" class="button primary" type="button">🔊 Export WAV</button>
             <label class="button file-button">
               ⬆️ Import JSON
               <input id="importSongInput" type="file" accept=".json,application/json" />
