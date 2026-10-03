@@ -34,6 +34,11 @@ const requiredIds = [
   "copyMeasureBtn",
   "pasteMeasureBtn",
   "exportMidiBtn",
+  "sectionBar",
+  "sectionNameInput",
+  "copySectionBtn",
+  "instrumentMixer",
+  "exportWavBtn",
   "sequencer"
 ];
 
