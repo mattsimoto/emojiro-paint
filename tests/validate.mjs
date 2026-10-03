@@ -66,6 +66,8 @@ const requiredIds = [
   "applyDrumPresetBtn",
   "clearDrumsBtn",
   "percussionGrid",
+  "arrangementOverview",
+  "songDurationReadout",
   "projectLibraryDialog",
   "projectNameInput",
   "projectLibraryList",
@@ -89,6 +91,7 @@ console.log(
 const requiredJsMarkers = [
   "function effectiveTempoAtStep",
   "function renderPercussionGrid",
+  "function renderArrangementOverview",
   "sectionTempoOverrides",
   "percussionPattern",
   "humanizeMs",
