@@ -17,13 +17,13 @@ The first working version includes:
   - Add, duplicate, delete, and switch frames
   - Adjustable 1–12 FPS flipbook preview
 - **Music Maker**
-  - 32-step sequencer with a 12-note pitch range
-  - 10 emoji instruments
+  - 96-beat staff-style composer spanning B3–G5
+  - 15 emoji instruments with synthesized melodic, animal, percussion, organ, guitar, and bass voices
   - Browser-generated lead, bass, pluck, whistle, bell, pad, beep, robot, drum, and clap sounds
-  - Tempo from 60–220 BPM
-  - Adjustable swing
-  - Random remix generator
-  - Song save/load in local storage
+  - Tempo from 40–480 BPM
+  - 3/4 and 4/4 time signatures
+  - Up to three simultaneous notes per beat
+  - Placeable end marker, looping, undo, and three original demo songs\n  - Song save/load in local storage
   - JSON song import/export
 - **Project storage**
   - Save and restore the complete paint/animation/music project locally
