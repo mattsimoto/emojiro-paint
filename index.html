@@ -8,7 +8,9 @@
   <title>Emojiro Paint</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
   <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="stylesheet" href="styles.css" />\n  <link rel="stylesheet" href="composer.css" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="composer.css" />
+  <link rel="stylesheet" href="paint-plus.css" />
 </head>
 <body>
   <div class="app-shell">
@@ -52,6 +54,9 @@
               <button class="tool-button" data-tool="fill" type="button"><span>🪣</span>Fill</button>
               <button class="tool-button" data-tool="line" type="button"><span>📏</span>Line</button>
               <button class="tool-button" data-tool="rect" type="button"><span>⬜</span>Box</button>
+              <button class="tool-button" data-tool="ellipse" type="button"><span>⭕</span>Ellipse</button>
+              <button class="tool-button" data-tool="spray" type="button"><span>💨</span>Spray</button>
+              <button class="tool-button" data-tool="customstamp" type="button"><span>🧩</span>My Stamp</button>
             </div>
 
             <h3>Ink</h3>
@@ -59,6 +64,11 @@
 
             <h3>Stamps</h3>
             <div id="stampPalette" class="stamp-palette" aria-label="Emoji stamp palette"></div>
+
+            <div class="custom-stamp-row">
+              <button id="openStampMakerBtn" class="button small" type="button">🧩 Make stamp</button>
+              <div id="customStampPalette" class="custom-stamp-palette" aria-label="Custom stamps"></div>
+            </div>
 
             <div class="stacked-actions">
               <button id="undoBtn" class="button" type="button">↶ Undo</button>
@@ -83,6 +93,8 @@
                   <button id="addFrameBtn" class="button small" type="button">＋ Frame</button>
                   <button id="duplicateFrameBtn" class="button small" type="button">⧉ Duplicate</button>
                   <button id="deleteFrameBtn" class="button small danger" type="button">− Delete</button>
+                  <button id="moveFrameLeftBtn" class="button small" type="button">← Frame</button>
+                  <button id="moveFrameRightBtn" class="button small" type="button">Frame →</button>
                   <button id="playFramesBtn" class="button small primary" type="button">▶ Preview</button>
                 </div>
               </div>
@@ -92,6 +104,10 @@
                 <input id="frameSpeed" type="range" min="1" max="12" value="4" />
                 <output id="frameSpeedOut">4 fps</output>
               </label>
+              <div class="animation-options">
+                <label class="check-row"><input id="onionSkinToggle" type="checkbox" /> 👻 Onion skin previous frame</label>
+                <label class="check-row"><input id="syncMusicToggle" type="checkbox" /> 🎵 Play song with animation preview</label>
+              </div>
             </div>
           </div>
         </div>
@@ -218,6 +234,37 @@
         </div>
       </section>
     </main>
+
+    <dialog id="stampMakerDialog" class="stamp-dialog">
+      <form method="dialog" class="stamp-maker card">
+        <div class="stamp-maker-head">
+          <div>
+            <h2>Custom Stamp Workshop</h2>
+            <p>Draw an 8 × 8 reusable pixel stamp, then place it anywhere on the canvas.</p>
+          </div>
+          <button class="button small" value="cancel" type="submit">✕ Close</button>
+        </div>
+
+        <div class="stamp-maker-layout">
+          <div>
+            <div id="stampEditorGrid" class="stamp-editor-grid" aria-label="8 by 8 custom stamp editor"></div>
+            <p class="stamp-help">Tap a filled pixel with the same color to erase it.</p>
+          </div>
+          <div class="stamp-maker-controls">
+            <h3>Stamp color</h3>
+            <div id="stampEditorColors" class="color-palette"></div>
+            <label>
+              Stamp name
+              <input id="customStampName" type="text" maxlength="24" value="My Stamp" />
+            </label>
+            <div class="stamp-maker-buttons">
+              <button id="clearStampEditorBtn" class="button" type="button">🧽 Clear</button>
+              <button id="saveCustomStampBtn" class="button primary" type="button">💾 Save stamp</button>
+            </div>
+          </div>
+        </div>
+      </form>
+    </dialog>
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
   </div>
