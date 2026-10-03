@@ -1,37 +1,56 @@
 # Emojiro Paint 🎨🎵
 
-Emojiro Paint is a touch-friendly browser creativity toy inspired by the spirit of classic console paint programs. It uses original interface code, browser-synthesized audio, and standard Unicode emoji rather than Nintendo art or audio assets.
+Emojiro Paint is a touch-friendly browser creativity toy inspired by classic console paint programs. It uses original interface code, browser-synthesized audio, and standard Unicode emoji rather than Nintendo art or audio assets.
 
-## Milestone 1
+## Current build
 
-The first working version includes:
+### 🎨 Paint Studio
 
-- **Paint Studio**
-  - 32 × 24 pixel-cell canvas
-  - Pencil, emoji stamp, eraser, flood fill, line, and box tools
-  - 18-color palette
-  - 40 emoji stamps
-  - Undo and redo
-  - PNG export
-- **Animation**
-  - Add, duplicate, delete, and switch frames
-  - Adjustable 1–12 FPS flipbook preview
-- **Music Maker**
-  - 96-beat staff-style composer spanning B3–G5
-  - 15 emoji instruments with synthesized melodic, animal, percussion, organ, guitar, and bass voices
-  - Browser-generated lead, bass, pluck, whistle, bell, pad, beep, robot, drum, and clap sounds
-  - Tempo from 40–480 BPM
-  - 3/4 and 4/4 time signatures
-  - Up to three simultaneous notes per beat
-  - Placeable end marker, looping, undo, and three original demo songs\n  - Song save/load in local storage
-  - JSON song import/export
-- **Project storage**
-  - Save and restore the complete paint/animation/music project locally
-- **Mobile support**
-  - Touch painting
-  - Large controls
-  - Scrollable sequencer
-  - Installable web-app manifest
+- 32 × 24 pixel-cell canvas
+- Pencil, eraser, flood fill, line, box, ellipse, and spray tools
+- 18-color palette
+- 40 built-in emoji stamps
+- **8 × 8 Custom Stamp Workshop**
+  - draw reusable pixel stamps
+  - name and save up to 24 custom stamps
+  - stamps persist on the device and inside saved projects
+- Undo and redo
+- PNG export
+- Mouse, pen, and touch input
+
+### 🎞️ Animation
+
+- Add, duplicate, delete, and reorder frames
+- Adjustable 1–12 FPS flipbook preview
+- Optional previous-frame onion skin
+- Optional music playback during animation preview
+- Frame thumbnails for quick navigation
+
+### 🎵 Emoji Composer
+
+- 96-beat staff-style composer spanning B3–G5
+- 15 emoji instruments with synthesized melodic, animal, percussion, organ, guitar, and bass voices
+- Tempo from 40–480 BPM
+- 3/4 and 4/4 time signatures
+- Up to three simultaneous notes per beat
+- Placeable end marker
+- Looping and music undo
+- Three original demo songs
+- Song save/load in local storage
+- JSON song import/export
+
+### 💾 Project storage
+
+- Save and restore the complete paint, animation, custom-stamp, and music state locally
+- No account or server is required
+
+### 📱 Mobile support
+
+- Large touch controls
+- Touch painting and stamp editing
+- Horizontally scrollable music staff
+- Responsive layouts
+- Installable web-app manifest
 
 ## Run locally
 
@@ -43,13 +62,11 @@ python3 -m http.server 8000
 
 Then open `http://localhost:8000`.
 
-You can also open `index.html` directly, although a local web server is preferable for install/PWA behavior.
-
 ## GitHub Pages
 
-Because the app is fully static, it can be hosted directly from the repository root using GitHub Pages:
+Because Emojiro Paint is fully static, it can be hosted directly from the repository root:
 
-1. Open **Settings → Pages** in this repository.
+1. Open **Settings → Pages**.
 2. Under **Build and deployment**, choose **Deploy from a branch**.
 3. Select **main** and **/(root)**.
 4. Save.
@@ -58,45 +75,49 @@ Because the app is fully static, it can be hosted directly from the repository r
 
 ### Paint
 
-Choose a tool, then draw directly on the canvas. Choosing an emoji stamp automatically switches to the Stamp tool. Line and Box tools preview while dragging.
+Choose a tool and draw directly on the canvas. Selecting an emoji or custom stamp automatically switches to its stamp tool. Line, Box, and Ellipse preview while dragging.
+
+The Custom Stamp Workshop creates reusable 8 × 8 pixel designs. Transparent pixels do not overwrite the painting when the stamp is placed.
+
+### Animation
+
+Use the frame strip to add, duplicate, delete, reorder, or select frames. **Onion skin** shows the previous frame faintly behind the current frame. **Play song with animation preview** starts the current composition with the flipbook preview.
 
 ### Music
 
-Choose an emoji instrument, then place it anywhere on the note grid. Selecting an occupied cell replaces its instrument; selecting the same instrument again removes the note. Press **Space** to play/stop while Music Maker is active.
+Choose an emoji instrument, then place it on the staff. Each beat supports up to three simultaneous notes. Selecting the same instrument in the same cell removes it. Press **Space** to play or stop while Music Maker is active.
 
 ## Architecture
 
-The project intentionally starts with plain HTML, CSS, and JavaScript:
+The project intentionally remains plain HTML, CSS, and JavaScript:
 
-- `index.html` — interface structure
-- `styles.css` — responsive retro UI
-- `app.js` — drawing, animation, Web Audio synth, sequencing, and persistence
+- `index.html` — application structure
+- `styles.css` — shared responsive retro UI
+- `paint-plus.css` — custom stamp and animation UI
+- `composer.css` — expanded music composer UI
+- `app.js` — painting, stamps, animation, Web Audio synthesis, sequencing, and persistence
 - `manifest.webmanifest` — installable app metadata
 - `favicon.svg` — original Emojiro icon
+- `.github/workflows/validate.yml` — basic syntax and file validation
 
-That keeps GitHub Pages deployment simple and makes the app easy to run on old or low-powered hardware.
+## Next milestones
 
-## Planned expansion
-
-The next milestones can add a more complete console-toy feel:
-
-- staff-style music notation mode
-- longer songs and song sections
-- copy/paste measures and notes
-- per-instrument volume and mute
-- octave and scale controls
+- Patterned brushes and filled shapes
+- Text tool
+- Stamp editing, duplication, and deletion
+- Image import with pixelation
+- Animation frame duration overrides
+- Animation + composition timeline synchronization
+- Animated GIF/WebM export
+- WAV/audio recording export
 - MIDI export
-- WAV recording/export
-- animation onion skinning
-- shape tools and patterned brushes
-- custom emoji/sticker favorites
-- image import and pixelation
-- animated GIF/WebM export
-- autosave and named project gallery
-- classic-style easter eggs and mini-games built from original assets
-- offline service worker support
-- shareable song/project URLs
+- Song sections and measure copy/paste
+- Per-instrument volume and mute
+- Autosave and named project gallery
+- Offline service worker support
+- Shareable song/project files
+- Original mini-games and interactive title-screen toys
 
 ## Browser notes
 
-Emoji appearance varies by operating system because the app uses each device's native emoji font. That is intentional: iPhone/iPad, Android, Windows, and macOS may render the same composition slightly differently.
+Emoji appearance varies by operating system because Emojiro Paint uses each device's native emoji font. iPhone/iPad, Android, Windows, and macOS may therefore render the same emoji composition slightly differently.
