@@ -102,9 +102,11 @@
   let undoStack = [];
   let redoStack = [];
   let frames = [blankFrame()];
+  let frameBeats = [1];
   let activeFrameIndex = 0;
   let previewTimer = null;
   let previewOrigin = 0;
+  let syncedAnimationPreview = false;
   let onionSkin = false;
   let syncMusic = false;
   let customStamps = loadCustomStamps();
@@ -113,6 +115,7 @@
   let stampEditorColor = COLORS[2];
   let stampEditorPainting = false;
   let stampEditorPaintValue = null;
+  let editingStampId = null;
   let brushPattern = "solid";
   let fillShapes = false;
 
@@ -154,6 +157,31 @@
 
   function currentFrame() {
     return frames[activeFrameIndex];
+  }
+
+  function drawFrameToContext(targetCtx, frame, width, height, background = "#fffdf7") {
+    const cellWidth = width / COLS;
+    const cellHeight = height / ROWS;
+    targetCtx.clearRect(0, 0, width, height);
+    targetCtx.fillStyle = background;
+    targetCtx.fillRect(0, 0, width, height);
+
+    for (let y = 0; y < ROWS; y += 1) {
+      for (let x = 0; x < COLS; x += 1) {
+        const cell = frame[cellIndex(x, y)];
+        if (!cell) continue;
+        if (cell.color) {
+          targetCtx.fillStyle = cell.color;
+          targetCtx.fillRect(x * cellWidth, y * cellHeight, cellWidth + .5, cellHeight + .5);
+        }
+        if (cell.emoji) {
+          targetCtx.font = Math.max(8, Math.floor(cellHeight * .84)) + "px Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji, sans-serif";
+          targetCtx.textAlign = "center";
+          targetCtx.textBaseline = "middle";
+          targetCtx.fillText(cell.emoji, x * cellWidth + cellWidth / 2, y * cellHeight + cellHeight / 2 + 1);
+        }
+      }
+    }
   }
 
   function renderCanvas(frame = currentFrame(), showGrid = true) {
@@ -260,12 +288,21 @@
     });
   }
 
+  function syncCustomStampActions() {
+    const hasStamp = Boolean(activeCustomStamp());
+    $("#editCustomStampBtn").disabled = !hasStamp;
+    $("#duplicateCustomStampBtn").disabled = !hasStamp;
+    $("#deleteCustomStampBtn").disabled = !hasStamp;
+  }
+
   function renderCustomStampPalette() {
     const palette = $("#customStampPalette");
     if (!palette) return;
     palette.innerHTML = "";
 
     if (!customStamps.length) {
+      activeCustomStampId = null;
+      syncCustomStampActions();
       const empty = document.createElement("span");
       empty.className = "stamp-help";
       empty.textContent = "No custom stamps yet.";
@@ -298,6 +335,7 @@
 
       palette.appendChild(button);
     });
+    syncCustomStampActions();
   }
 
   function syncToolButtons() {
@@ -562,6 +600,98 @@
     toast("Canvas cleared");
   });
 
+  function hexToRgb(hex) {
+    const value = hex.replace("#", "");
+    return {
+      r: parseInt(value.slice(0, 2), 16),
+      g: parseInt(value.slice(2, 4), 16),
+      b: parseInt(value.slice(4, 6), 16)
+    };
+  }
+
+  const PALETTE_RGB = COLORS.map((color) => ({ color, ...hexToRgb(color) }));
+
+  function nearestPaletteColor(r, g, b) {
+    let best = PALETTE_RGB[0];
+    let bestDistance = Infinity;
+    PALETTE_RGB.forEach((entry) => {
+      const dr = r - entry.r;
+      const dg = g - entry.g;
+      const db = b - entry.b;
+      const distance = dr * dr + dg * dg + db * db;
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        best = entry;
+      }
+    });
+    return best.color;
+  }
+
+  async function imageSourceFromFile(file) {
+    if ("createImageBitmap" in window) return createImageBitmap(file);
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        resolve(img);
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error("Image could not be decoded"));
+      };
+      img.src = url;
+    });
+  }
+
+  $("#importImageInput").addEventListener("change", async (event) => {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+    const frameStrip = $(".frame-strip");
+    frameStrip.classList.add("importing");
+    try {
+      const image = await imageSourceFromFile(file);
+      const sourceWidth = image.width || image.naturalWidth;
+      const sourceHeight = image.height || image.naturalHeight;
+      const temp = document.createElement("canvas");
+      temp.width = COLS;
+      temp.height = ROWS;
+      const tctx = temp.getContext("2d", { willReadFrequently: true });
+      tctx.clearRect(0, 0, COLS, ROWS);
+      tctx.imageSmoothingEnabled = true;
+
+      const scale = Math.min(COLS / sourceWidth, ROWS / sourceHeight);
+      const width = sourceWidth * scale;
+      const height = sourceHeight * scale;
+      const dx = (COLS - width) / 2;
+      const dy = (ROWS - height) / 2;
+      tctx.drawImage(image, dx, dy, width, height);
+
+      const pixels = tctx.getImageData(0, 0, COLS, ROWS).data;
+      const imported = blankFrame();
+      for (let i = 0; i < COLS * ROWS; i += 1) {
+        const p = i * 4;
+        if (pixels[p + 3] < 32) continue;
+        imported[i] = {
+          color: nearestPaletteColor(pixels[p], pixels[p + 1], pixels[p + 2]),
+          emoji: null
+        };
+      }
+
+      pushUndo();
+      frames[activeFrameIndex] = imported;
+      renderCanvas();
+      renderFrameList();
+      toast("Image pixelated to 32 × 24");
+      if (typeof image.close === "function") image.close();
+    } catch (error) {
+      toast("Image could not be imported");
+    } finally {
+      frameStrip.classList.remove("importing");
+      event.target.value = "";
+    }
+  });
+
   $("#exportCanvasBtn").addEventListener("click", () => {
     renderCanvas(currentFrame(), false);
     const url = paintCanvas.toDataURL("image/png");
@@ -577,29 +707,17 @@
     const temp = document.createElement("canvas");
     temp.width = 320;
     temp.height = 240;
-    const tctx = temp.getContext("2d");
-    tctx.fillStyle = "#fffdf7";
-    tctx.fillRect(0, 0, temp.width, temp.height);
-
-    const scaleX = temp.width / COLS;
-    const scaleY = temp.height / ROWS;
-
-    for (let y = 0; y < ROWS; y += 1) {
-      for (let x = 0; x < COLS; x += 1) {
-        const cell = frame[cellIndex(x, y)];
-        if (cell.color) {
-          tctx.fillStyle = cell.color;
-          tctx.fillRect(x * scaleX, y * scaleY, scaleX, scaleY);
-        }
-        if (cell.emoji) {
-          tctx.font = "9px Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji, sans-serif";
-          tctx.textAlign = "center";
-          tctx.textBaseline = "middle";
-          tctx.fillText(cell.emoji, x * scaleX + scaleX / 2, y * scaleY + scaleY / 2);
-        }
-      }
-    }
+    drawFrameToContext(temp.getContext("2d"), frame, temp.width, temp.height);
     return temp.toDataURL("image/png");
+  }
+
+  function syncFrameTimingUi() {
+    while (frameBeats.length < frames.length) frameBeats.push(1);
+    frameBeats = frameBeats.slice(0, frames.length);
+    const beats = Math.max(1, Math.min(8, Number(frameBeats[activeFrameIndex]) || 1));
+    frameBeats[activeFrameIndex] = beats;
+    $("#frameBeats").value = beats;
+    $("#frameBeatsOut").textContent = beats + (beats === 1 ? " beat" : " beats");
   }
 
   function renderFrameList() {
@@ -614,11 +732,17 @@
       const label = document.createElement("span");
       label.textContent = index + 1;
       button.appendChild(label);
+      const beats = document.createElement("span");
+      beats.className = "beat-badge";
+      const beatCount = Math.max(1, Number(frameBeats[index]) || 1);
+      beats.textContent = beatCount + "b";
+      button.appendChild(beats);
       button.addEventListener("click", () => {
         stopFramePreview();
         activeFrameIndex = index;
         undoStack = [];
         redoStack = [];
+        syncFrameTimingUi();
         renderCanvas();
         renderFrameList();
       });
@@ -629,6 +753,7 @@
   $("#addFrameBtn").addEventListener("click", () => {
     stopFramePreview();
     frames.push(blankFrame());
+    frameBeats.push(1);
     activeFrameIndex = frames.length - 1;
     undoStack = [];
     redoStack = [];
@@ -639,6 +764,7 @@
   $("#duplicateFrameBtn").addEventListener("click", () => {
     stopFramePreview();
     frames.splice(activeFrameIndex + 1, 0, deepClone(currentFrame()));
+    frameBeats.splice(activeFrameIndex + 1, 0, frameBeats[activeFrameIndex] || 1);
     activeFrameIndex += 1;
     undoStack = [];
     redoStack = [];
@@ -650,6 +776,7 @@
     stopFramePreview();
     if (frames.length === 1) return toast("Keep at least one frame");
     frames.splice(activeFrameIndex, 1);
+    frameBeats.splice(activeFrameIndex, 1);
     activeFrameIndex = Math.max(0, activeFrameIndex - 1);
     undoStack = [];
     redoStack = [];
@@ -672,6 +799,9 @@
     const temp = frames[activeFrameIndex];
     frames[activeFrameIndex] = frames[nextIndex];
     frames[nextIndex] = temp;
+    const beatTemp = frameBeats[activeFrameIndex];
+    frameBeats[activeFrameIndex] = frameBeats[nextIndex];
+    frameBeats[nextIndex] = beatTemp;
     activeFrameIndex = nextIndex;
     renderCanvas();
     renderFrameList();
@@ -689,34 +819,83 @@
     syncMusic = event.target.checked;
   });
 
+  $("#frameBeats").addEventListener("input", (event) => {
+    frameBeats[activeFrameIndex] = Number(event.target.value);
+    $("#frameBeatsOut").textContent = event.target.value + (event.target.value === "1" ? " beat" : " beats");
+    renderFrameList();
+  });
+
   $("#frameSpeed").addEventListener("input", (event) => {
     $("#frameSpeedOut").textContent = event.target.value + " fps";
     if (previewTimer) startFramePreview();
   });
 
+  function animationFrameForBeat(beat) {
+    const total = frameBeats.reduce((sum, value) => sum + Math.max(1, Number(value) || 1), 0) || 1;
+    let position = ((beat % total) + total) % total;
+    for (let i = 0; i < frames.length; i += 1) {
+      const duration = Math.max(1, Number(frameBeats[i]) || 1);
+      if (position < duration) return i;
+      position -= duration;
+    }
+    return 0;
+  }
+
+  function updateSyncedAnimationForBeat(beat) {
+    if (!syncedAnimationPreview) return;
+    const nextIndex = animationFrameForBeat(beat);
+    if (nextIndex !== activeFrameIndex) {
+      activeFrameIndex = nextIndex;
+      syncFrameTimingUi();
+      renderCanvas();
+      renderFrameList();
+    }
+  }
+
   function startFramePreview() {
     stopFramePreview(false);
     previewOrigin = activeFrameIndex;
-    let index = activeFrameIndex;
-    const fps = Number($("#frameSpeed").value);
     $("#playFramesBtn").textContent = "■ Stop";
-    if (syncMusic && !isMusicPlaying) startMusic();
-    previewTimer = setInterval(() => {
-      index = (index + 1) % frames.length;
-      activeFrameIndex = index;
+
+    if (syncMusic) {
+      syncedAnimationPreview = true;
+      previewTimer = "music-sync";
+      currentStep = 0;
+      activeFrameIndex = animationFrameForBeat(0);
+      syncFrameTimingUi();
       renderCanvas();
       renderFrameList();
-    }, 1000 / fps);
+      if (!isMusicPlaying) startMusic();
+      return;
+    }
+
+    let index = activeFrameIndex;
+    const tick = () => {
+      if (!previewTimer || syncedAnimationPreview) return;
+      index = (index + 1) % frames.length;
+      activeFrameIndex = index;
+      syncFrameTimingUi();
+      renderCanvas();
+      renderFrameList();
+      previewTimer = setTimeout(tick, 1000 / Number($("#frameSpeed").value));
+    };
+    previewTimer = setTimeout(tick, 1000 / Number($("#frameSpeed").value));
   }
 
   function stopFramePreview(restore = true) {
-    if (!previewTimer) return;
-    clearInterval(previewTimer);
-    previewTimer = null;
+    if (!previewTimer && !syncedAnimationPreview) return;
+    if (syncedAnimationPreview) {
+      syncedAnimationPreview = false;
+      previewTimer = null;
+      if (isMusicPlaying) stopMusic(true);
+    } else {
+      clearTimeout(previewTimer);
+      previewTimer = null;
+    }
     $("#playFramesBtn").textContent = "▶ Preview";
-    if (syncMusic && isMusicPlaying) stopMusic();
     if (restore) {
       activeFrameIndex = Math.min(previewOrigin, frames.length - 1);
+      syncFrameTimingUi();
       renderCanvas();
       renderFrameList();
     }
@@ -803,12 +982,52 @@
     stampEditorPainting = false;
   });
 
-  $("#openStampMakerBtn").addEventListener("click", () => {
-    stampEditorPixels = Array(64).fill(null);
-    $("#customStampName").value = "My Stamp";
+  function openStampEditor(stamp = null) {
+    editingStampId = stamp ? stamp.id : null;
+    stampEditorPixels = stamp ? stamp.pixels.slice() : Array(64).fill(null);
+    $("#customStampName").value = stamp ? stamp.name : "My Stamp";
+    $("#saveCustomStampBtn").textContent = stamp ? "💾 Update stamp" : "💾 Save stamp";
     renderStampEditor();
     renderStampEditorColors();
     $("#stampMakerDialog").showModal();
+  }
+
+  $("#openStampMakerBtn").addEventListener("click", () => openStampEditor());
+
+  $("#editCustomStampBtn").addEventListener("click", () => {
+    const stamp = activeCustomStamp();
+    if (!stamp) return toast("Select a custom stamp first");
+    openStampEditor(stamp);
+  });
+
+  $("#duplicateCustomStampBtn").addEventListener("click", () => {
+    const stamp = activeCustomStamp();
+    if (!stamp) return toast("Select a custom stamp first");
+    const copy = {
+      id: "stamp-" + Date.now().toString(36),
+      name: (stamp.name + " Copy").slice(0, 24),
+      pixels: stamp.pixels.slice()
+    };
+    customStamps.push(copy);
+    if (customStamps.length > 24) customStamps.shift();
+    activeCustomStampId = copy.id;
+    persistCustomStamps();
+    renderCustomStampPalette();
+    toast("Custom stamp duplicated");
+  });
+
+  $("#deleteCustomStampBtn").addEventListener("click", () => {
+    const stamp = activeCustomStamp();
+    if (!stamp) return toast("Select a custom stamp first");
+    customStamps = customStamps.filter((item) => item.id !== stamp.id);
+    activeCustomStampId = customStamps[0] ? customStamps[0].id : null;
+    persistCustomStamps();
+    renderCustomStampPalette();
+    if (!activeCustomStampId && activeTool === "customstamp") {
+      activeTool = "pencil";
+      syncToolButtons();
+    }
+    toast("Custom stamp deleted");
   });
 
   $("#clearStampEditorBtn").addEventListener("click", () => {
@@ -818,14 +1037,27 @@
 
   $("#saveCustomStampBtn").addEventListener("click", () => {
     if (!stampEditorPixels.some(Boolean)) return toast("Draw something before saving the stamp");
-    const stamp = {
-      id: "stamp-" + Date.now().toString(36),
-      name: ($("#customStampName").value || "My Stamp").trim().slice(0, 24),
-      pixels: stampEditorPixels.slice()
-    };
-    customStamps.push(stamp);
-    if (customStamps.length > 24) customStamps.shift();
-    activeCustomStampId = stamp.id;
+    const name = ($("#customStampName").value || "My Stamp").trim().slice(0, 24);
+
+    if (editingStampId) {
+      const stamp = customStamps.find((item) => item.id === editingStampId);
+      if (stamp) {
+        stamp.name = name;
+        stamp.pixels = stampEditorPixels.slice();
+        activeCustomStampId = stamp.id;
+      }
+    } else {
+      const stamp = {
+        id: "stamp-" + Date.now().toString(36),
+        name,
+        pixels: stampEditorPixels.slice()
+      };
+      customStamps.push(stamp);
+      if (customStamps.length > 24) customStamps.shift();
+      activeCustomStampId = stamp.id;
+    }
+
+    editingStampId = null;
     persistCustomStamps();
     renderCustomStampPalette();
     activeTool = "customstamp";
@@ -1150,6 +1382,7 @@
   }
 
   function playStep(step) {
+    updateSyncedAnimationForBeat(step);
     const bpm = Number($("#tempoSlider").value);
     const beatDuration = 60 / bpm;
     const ac = ensureAudio();
@@ -1173,6 +1406,7 @@
           currentStep = 0;
         } else {
           stopMusic();
+          if (syncedAnimationPreview) stopFramePreview();
           return;
         }
       } else {
@@ -1195,13 +1429,22 @@
     scheduleNextStep();
   }
 
-  function stopMusic() {
+  function stopMusic(fromAnimation = false) {
     isMusicPlaying = false;
     clearTimeout(musicTimer);
     musicTimer = null;
     currentStep = 0;
     $("#playMusicBtn").textContent = "▶ Play";
     refreshPlayhead();
+    if (syncedAnimationPreview && !fromAnimation) {
+      syncedAnimationPreview = false;
+      previewTimer = null;
+      $("#playFramesBtn").textContent = "▶ Preview";
+      activeFrameIndex = Math.min(previewOrigin, frames.length - 1);
+      syncFrameTimingUi();
+      renderCanvas();
+      renderFrameList();
+    }
   }
 
   $("#playMusicBtn").addEventListener("click", startMusic);
@@ -1392,16 +1635,233 @@
   });
 
   // -----------------------------
+  // Animation export
+  // -----------------------------
+
+  function animationFrameDurationMs(index) {
+    if (syncMusic) {
+      return Math.max(1, Number(frameBeats[index]) || 1) * (60000 / Number($("#tempoSlider").value));
+    }
+    return 1000 / Number($("#frameSpeed").value);
+  }
+
+  function make332Palette() {
+    const palette = [];
+    for (let r = 0; r < 8; r += 1) {
+      for (let g = 0; g < 8; g += 1) {
+        for (let b = 0; b < 4; b += 1) {
+          palette.push(Math.round(r * 255 / 7), Math.round(g * 255 / 7), Math.round(b * 255 / 3));
+        }
+      }
+    }
+    return palette;
+  }
+
+  function gifIndexForRgb(r, g, b) {
+    return ((r >> 5) << 5) | ((g >> 5) << 2) | (b >> 6);
+  }
+
+  function gifLzwEncode(indices, minCodeSize = 8) {
+    const clearCode = 1 << minCodeSize;
+    const endCode = clearCode + 1;
+    let nextCode;
+    let codeSize;
+    let dictionary;
+    const output = [];
+    let bitBuffer = 0;
+    let bitCount = 0;
+
+    const writeCode = (code) => {
+      bitBuffer |= code << bitCount;
+      bitCount += codeSize;
+      while (bitCount >= 8) {
+        output.push(bitBuffer & 255);
+        bitBuffer >>= 8;
+        bitCount -= 8;
+      }
+    };
+
+    const resetDictionary = () => {
+      dictionary = new Map();
+      nextCode = endCode + 1;
+      codeSize = minCodeSize + 1;
+    };
+
+    resetDictionary();
+    writeCode(clearCode);
+
+    if (indices.length) {
+      let prefix = indices[0];
+      for (let i = 1; i < indices.length; i += 1) {
+        const value = indices[i];
+        const key = prefix + "," + value;
+        if (dictionary.has(key)) {
+          prefix = dictionary.get(key);
+        } else {
+          writeCode(prefix);
+          if (nextCode < 4096) {
+            dictionary.set(key, nextCode);
+            nextCode += 1;
+            if (nextCode === (1 << codeSize) && codeSize < 12) codeSize += 1;
+          } else {
+            writeCode(clearCode);
+            resetDictionary();
+          }
+          prefix = value;
+        }
+      }
+      writeCode(prefix);
+    }
+
+    writeCode(endCode);
+    if (bitCount > 0) output.push(bitBuffer & 255);
+    return output;
+  }
+
+  function pushWord(bytes, value) {
+    bytes.push(value & 255, (value >> 8) & 255);
+  }
+
+  function pushAscii(bytes, value) {
+    for (let i = 0; i < value.length; i += 1) bytes.push(value.charCodeAt(i) & 255);
+  }
+
+  async function exportAnimationGif() {
+    const width = 320;
+    const height = 240;
+    const temp = document.createElement("canvas");
+    temp.width = width;
+    temp.height = height;
+    const tctx = temp.getContext("2d", { willReadFrequently: true });
+    const bytes = [];
+    const palette = make332Palette();
+
+    pushAscii(bytes, "GIF89a");
+    pushWord(bytes, width);
+    pushWord(bytes, height);
+    bytes.push(0xF7, 0, 0);
+    bytes.push(...palette);
+    bytes.push(0x21, 0xFF, 0x0B);
+    pushAscii(bytes, "NETSCAPE2.0");
+    bytes.push(0x03, 0x01, 0x00, 0x00, 0x00);
+
+    for (let frameIndex = 0; frameIndex < frames.length; frameIndex += 1) {
+      drawFrameToContext(tctx, frames[frameIndex], width, height);
+      const rgba = tctx.getImageData(0, 0, width, height).data;
+      const indexed = new Uint8Array(width * height);
+      for (let i = 0; i < indexed.length; i += 1) {
+        const p = i * 4;
+        indexed[i] = gifIndexForRgb(rgba[p], rgba[p + 1], rgba[p + 2]);
+      }
+
+      const delay = Math.max(1, Math.round(animationFrameDurationMs(frameIndex) / 10));
+      bytes.push(0x21, 0xF9, 0x04, 0x04);
+      pushWord(bytes, Math.min(65535, delay));
+      bytes.push(0x00, 0x00);
+      bytes.push(0x2C);
+      pushWord(bytes, 0);
+      pushWord(bytes, 0);
+      pushWord(bytes, width);
+      pushWord(bytes, height);
+      bytes.push(0x00);
+      bytes.push(8);
+
+      const compressed = gifLzwEncode(indexed, 8);
+      for (let offset = 0; offset < compressed.length; offset += 255) {
+        const block = compressed.slice(offset, offset + 255);
+        bytes.push(block.length, ...block);
+      }
+      bytes.push(0x00);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+
+    bytes.push(0x3B);
+    const blob = new Blob([new Uint8Array(bytes)], { type: "image/gif" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "emojiro-animation.gif";
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  async function exportAnimationWebm() {
+    if (!HTMLCanvasElement.prototype.captureStream || typeof MediaRecorder === "undefined") {
+      throw new Error("WebM export is not supported in this browser");
+    }
+
+    const exportCanvas = document.createElement("canvas");
+    exportCanvas.width = 640;
+    exportCanvas.height = 480;
+    const exportCtx = exportCanvas.getContext("2d");
+    const stream = exportCanvas.captureStream(30);
+    const types = ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"];
+    const mimeType = types.find((type) => !MediaRecorder.isTypeSupported || MediaRecorder.isTypeSupported(type)) || "";
+    const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+    const chunks = [];
+
+    recorder.addEventListener("dataavailable", (event) => {
+      if (event.data && event.data.size) chunks.push(event.data);
+    });
+
+    const stopped = new Promise((resolve) => recorder.addEventListener("stop", resolve, { once: true }));
+    recorder.start();
+
+    for (let i = 0; i < frames.length; i += 1) {
+      drawFrameToContext(exportCtx, frames[i], exportCanvas.width, exportCanvas.height);
+      await new Promise((resolve) => setTimeout(resolve, animationFrameDurationMs(i)));
+    }
+
+    recorder.stop();
+    await stopped;
+    stream.getTracks().forEach((track) => track.stop());
+    const blob = new Blob(chunks, { type: mimeType || "video/webm" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "emojiro-animation.webm";
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  $("#exportGifBtn").addEventListener("click", async () => {
+    $("#exportGifBtn").disabled = true;
+    toast("Building GIF…");
+    try {
+      await exportAnimationGif();
+      toast("GIF exported");
+    } catch (error) {
+      toast("GIF export failed");
+    } finally {
+      $("#exportGifBtn").disabled = false;
+    }
+  });
+
+  $("#exportWebmBtn").addEventListener("click", async () => {
+    $("#exportWebmBtn").disabled = true;
+    toast("Recording animation…");
+    try {
+      await exportAnimationWebm();
+      toast("WebM exported");
+    } catch (error) {
+      toast(error.message || "WebM export failed");
+    } finally {
+      $("#exportWebmBtn").disabled = false;
+    }
+  });
+
+  // -----------------------------
   // Project save/load
   // -----------------------------
 
   function projectPayload() {
     return {
       format: "emojiro-paint-project",
-      version: 2,
+      version: 3,
       savedAt: new Date().toISOString(),
       paint: {
         frames,
+        frameBeats,
         activeFrameIndex,
         frameSpeed: Number($("#frameSpeed").value),
         onionSkin,
@@ -1429,6 +1889,10 @@
       stopFramePreview();
       if (project.paint && Array.isArray(project.paint.frames) && project.paint.frames.length) {
         frames = project.paint.frames;
+        frameBeats = Array.isArray(project.paint.frameBeats)
+          ? project.paint.frameBeats.slice(0, frames.length).map((value) => Math.max(1, Math.min(8, Number(value) || 1)))
+          : frames.map(() => 1);
+        while (frameBeats.length < frames.length) frameBeats.push(1);
         activeFrameIndex = Math.min(project.paint.activeFrameIndex || 0, frames.length - 1);
         $("#frameSpeed").value = project.paint.frameSpeed || 4;
         $("#frameSpeedOut").textContent = $("#frameSpeed").value + " fps";
@@ -1451,6 +1915,7 @@
         }
         undoStack = [];
         redoStack = [];
+        syncFrameTimingUi();
         renderCanvas();
         renderFrameList();
       }
@@ -1496,6 +1961,8 @@
   $("#syncMusicToggle").checked = syncMusic;
   $("#brushPatternSelect").value = brushPattern;
   $("#fillShapeToggle").checked = fillShapes;
+  syncFrameTimingUi();
+  syncCustomStampActions();
   renderCanvas();
   renderFrameList();
   renderInstrumentBank();
