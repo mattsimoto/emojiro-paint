@@ -1433,7 +1433,7 @@
   function refreshSectionSelection() {
     const start = sectionStart();
     const end = start + SECTION_LENGTH;
-    $("#sequencer [data-step]").forEach((el) => {
+    $$("#sequencer [data-step]").forEach((el) => {
       const step = Number(el.dataset.step);
       el.classList.toggle("section-selected", step >= start && step < end);
       el.classList.toggle("section-boundary", step % SECTION_LENGTH === 0);
