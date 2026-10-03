@@ -67,7 +67,12 @@
             <div id="stampPalette" class="stamp-palette" aria-label="Emoji stamp palette"></div>
 
             <div class="custom-stamp-row">
-              <button id="openStampMakerBtn" class="button small" type="button">🧩 Make stamp</button>
+              <div class="custom-stamp-actions">
+                <button id="openStampMakerBtn" class="button small" type="button">🧩 New</button>
+                <button id="editCustomStampBtn" class="button small" type="button">✏️ Edit</button>
+                <button id="duplicateCustomStampBtn" class="button small" type="button">⧉ Copy</button>
+                <button id="deleteCustomStampBtn" class="button small danger" type="button">🗑️</button>
+              </div>
               <div id="customStampPalette" class="custom-stamp-palette" aria-label="Custom stamps"></div>
             </div>
 
@@ -93,6 +98,10 @@
               <button id="undoBtn" class="button" type="button">↶ Undo</button>
               <button id="redoBtn" class="button" type="button">↷ Redo</button>
               <button id="clearCanvasBtn" class="button danger" type="button">🗑️ Clear</button>
+              <label class="button file-button">
+                🖼️ Import image
+                <input id="importImageInput" type="file" accept="image/*" />
+              </label>
               <button id="exportCanvasBtn" class="button primary" type="button">⬇️ Export PNG</button>
             </div>
           </aside>
@@ -118,14 +127,25 @@
                 </div>
               </div>
               <div id="frameList" class="frame-list" aria-label="Animation frames"></div>
-              <label class="range-row">
-                <span>Frame speed</span>
-                <input id="frameSpeed" type="range" min="1" max="12" value="4" />
-                <output id="frameSpeedOut">4 fps</output>
-              </label>
+              <div class="frame-timing-grid">
+                <label class="range-row">
+                  <span>Frame speed</span>
+                  <input id="frameSpeed" type="range" min="1" max="12" value="4" />
+                  <output id="frameSpeedOut">4 fps</output>
+                </label>
+                <label class="range-row">
+                  <span>Frame beats</span>
+                  <input id="frameBeats" type="range" min="1" max="8" value="1" />
+                  <output id="frameBeatsOut">1 beat</output>
+                </label>
+              </div>
               <div class="animation-options">
                 <label class="check-row"><input id="onionSkinToggle" type="checkbox" /> 👻 Onion skin previous frame</label>
-                <label class="check-row"><input id="syncMusicToggle" type="checkbox" /> 🎵 Play song with animation preview</label>
+                <label class="check-row"><input id="syncMusicToggle" type="checkbox" /> 🎵 Beat-lock animation to composer</label>
+              </div>
+              <div class="animation-export-actions">
+                <button id="exportGifBtn" class="button small" type="button">🖼️ Export GIF</button>
+                <button id="exportWebmBtn" class="button small primary" type="button">🎬 Export WebM</button>
               </div>
             </div>
           </div>
