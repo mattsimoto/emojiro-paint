@@ -174,3 +174,131 @@
     grid-template-columns: repeat(3, minmax(76px, 1fr));
   }
 }
+
+
+.measure-editor,
+.mixer-card {
+  margin-bottom: 16px;
+  padding: 12px 14px;
+}
+
+.measure-editor {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.measure-editor > div:first-child {
+  display: grid;
+  gap: 2px;
+}
+
+.measure-editor span,
+.mixer-card > p {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.measure-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.mixer-card summary {
+  cursor: pointer;
+  font-weight: 900;
+  list-style: none;
+}
+
+.mixer-card summary::-webkit-details-marker {
+  display: none;
+}
+
+.mixer-card > p {
+  margin: 8px 0 12px;
+}
+
+.instrument-mixer {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(220px, 1fr));
+  gap: 8px;
+}
+
+.mixer-channel {
+  display: grid;
+  grid-template-columns: auto minmax(90px, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 9px;
+  border: 2px solid var(--ink);
+  border-radius: 11px;
+  background: #fff;
+}
+
+.mixer-channel-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.mixer-channel-label .emoji {
+  font-size: 22px;
+}
+
+.mixer-channel-label span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mixer-channel input[type="range"] {
+  min-width: 70px;
+}
+
+.mute-button {
+  min-width: 39px;
+  padding: 6px;
+  border: 2px solid var(--ink);
+  border-radius: 9px;
+  background: #fff;
+  font-size: 11px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.mute-button.active {
+  background: #ffd4cf;
+}
+
+.seq-step.edit-measure,
+.seq-cell.edit-measure {
+  background-color: #fff0b0;
+}
+
+.seq-cell.staff-line.edit-measure {
+  background:
+    linear-gradient(to bottom, transparent 47%, rgba(45,42,50,.20) 47%, rgba(45,42,50,.20) 53%, transparent 53%),
+    #fff0b0;
+}
+
+@media (max-width: 1000px) {
+  .instrument-mixer {
+    grid-template-columns: repeat(2, minmax(210px, 1fr));
+  }
+}
+
+@media (max-width: 650px) {
+  .measure-editor {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .instrument-mixer {
+    grid-template-columns: 1fr;
+  }
+}
