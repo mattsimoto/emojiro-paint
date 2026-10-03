@@ -30,6 +30,10 @@ const requiredIds = [
   "frameBeats",
   "exportGifBtn",
   "exportWebmBtn",
+  "instrumentMixer",
+  "copyMeasureBtn",
+  "pasteMeasureBtn",
+  "exportMidiBtn",
   "sequencer"
 ];
 
