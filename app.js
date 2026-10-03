@@ -2238,7 +2238,7 @@
   async function exportWav() {
     const sampleRate = 22050;
     const beatSeconds = 60 / Number($("#tempoSlider").value);
-    const tailSeconds = 1.2;
+    const tailSeconds = 2.2;
     const durationSeconds = songEndStep * beatSeconds + tailSeconds;
     const sampleCount = Math.ceil(durationSeconds * sampleRate);
     const left = new Float32Array(sampleCount);
@@ -2261,6 +2261,20 @@
         const rightPan = Math.sin((pan + 1) * Math.PI / 4);
         const volume = Math.max(0, Math.min(1, Number(mix.volume) || 0));
 
+        const filterAmount = Math.max(0, Math.min(1, Number(mix.filter) || 0));
+        const delayAmount = Math.max(0, Math.min(1, Number(mix.delay) || 0));
+        const cutoff = Math.max(450, 19000 * Math.pow(0.055, filterAmount));
+        const rc = 1 / (Math.PI * 2 * cutoff);
+        const alpha = (1 / sampleRate) / (rc + (1 / sampleRate));
+        const delaySamples = Math.round((.14 + delayAmount * .34) * sampleRate);
+        let filteredSample = 0;
+
+        const addStereo = (index, sample, amount = 1) => {
+          if (index < 0 || index >= sampleCount) return;
+          left[index] += sample * leftPan * amount;
+          right[index] += sample * rightPan * amount;
+        };
+
         for (let i = 0; i < voiceSamples; i += 1) {
           const t = i / sampleRate;
           const progress = i / Math.max(1, voiceSamples - 1);
@@ -2271,9 +2285,20 @@
           if (config.harmonic) sample += .28 * offlineWave("sine", phase * config.harmonic);
           if (config.noise) sample += (Math.random() * 2 - 1) * config.noise;
           sample *= config.gain * volume * envelope;
+
+          if (filterAmount > .005) {
+            filteredSample += alpha * (sample - filteredSample);
+            sample = filteredSample;
+          }
+
           const index = startSample + i;
-          left[index] += sample * leftPan;
-          right[index] += sample * rightPan;
+          addStereo(index, sample);
+
+          if (delayAmount > .005) {
+            const wet = .12 + delayAmount * .38;
+            addStereo(index + delaySamples, sample, wet);
+            addStereo(index + delaySamples * 2, sample, wet * (.25 + delayAmount * .25));
+          }
         }
       }
 
@@ -2562,6 +2587,98 @@
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
+  async function exportMusicVideo() {
+    if (!HTMLCanvasElement.prototype.captureStream || typeof MediaRecorder === "undefined") {
+      throw new Error("Music-video export is not supported in this browser");
+    }
+
+    stopFramePreview();
+    stopMusic();
+
+    const ac = ensureAudio();
+    captureDestination = ac.createMediaStreamDestination();
+    suppressLiveOutput = true;
+
+    const exportCanvas = document.createElement("canvas");
+    exportCanvas.width = 640;
+    exportCanvas.height = 480;
+    const exportCtx = exportCanvas.getContext("2d");
+    const videoStream = exportCanvas.captureStream(30);
+    const combined = new MediaStream([
+      ...videoStream.getVideoTracks(),
+      ...captureDestination.stream.getAudioTracks()
+    ]);
+
+    const types = [
+      "video/webm;codecs=vp9,opus",
+      "video/webm;codecs=vp8,opus",
+      "video/webm",
+      "video/mp4"
+    ];
+    const mimeType = types.find((type) =>
+      !MediaRecorder.isTypeSupported || MediaRecorder.isTypeSupported(type)
+    ) || "";
+    const extension = mimeType.includes("mp4") ? "mp4" : "webm";
+    const recorder = new MediaRecorder(combined, mimeType ? { mimeType } : undefined);
+    const chunks = [];
+
+    recorder.addEventListener("dataavailable", (event) => {
+      if (event.data && event.data.size) chunks.push(event.data);
+    });
+
+    const stopped = new Promise((resolve) =>
+      recorder.addEventListener("stop", resolve, { once: true })
+    );
+
+    try {
+      recorder.start(250);
+      const beatMs = 60000 / Number($("#tempoSlider").value);
+
+      for (let step = 0; step < songEndStep; step += 1) {
+        const frameIndex = animationFrameForBeat(step);
+        drawFrameToContext(exportCtx, frames[frameIndex] || frames[0], exportCanvas.width, exportCanvas.height);
+
+        const when = ac.currentTime + .015;
+        PITCHES.forEach((pitch, row) => {
+          const id = sequence[row][step];
+          if (id) playInstrument(id, noteToFrequency(pitch), Math.min(.55, beatMs / 1000 * .82), when);
+        });
+
+        await new Promise((resolve) => setTimeout(resolve, beatMs));
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 900));
+      recorder.stop();
+      await stopped;
+
+      const blob = new Blob(chunks, { type: mimeType || "video/webm" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = safeFilename($("#songName").value || "emojiro-music-video") + "." + extension;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1200);
+    } finally {
+      suppressLiveOutput = false;
+      captureDestination = null;
+      combined.getTracks().forEach((track) => track.stop());
+      videoStream.getTracks().forEach((track) => track.stop());
+    }
+  }
+
+  $("#exportMusicVideoBtn").addEventListener("click", async () => {
+    $("#exportMusicVideoBtn").disabled = true;
+    toast("Recording music video…");
+    try {
+      await exportMusicVideo();
+      toast("Music video exported");
+    } catch (error) {
+      toast(error.message || "Music video export failed");
+    } finally {
+      $("#exportMusicVideoBtn").disabled = false;
+    }
+  });
+
   $("#exportGifBtn").addEventListener("click", async () => {
     $("#exportGifBtn").disabled = true;
     toast("Building GIF…");
@@ -2595,7 +2712,7 @@
   function projectPayload() {
     return {
       format: "emojiro-paint-project",
-      version: 4,
+      version: 5,
       name: ($("#projectNameInput").value || "Untitled Emojiro Project").trim().slice(0, 40),
       savedAt: new Date().toISOString(),
       paint: {
@@ -2702,7 +2819,7 @@
     );
     return {
       format: "emojiro-paint-project",
-      version: 4,
+      version: 5,
       name: "Untitled Emojiro Project",
       savedAt: new Date().toISOString(),
       paint: {
