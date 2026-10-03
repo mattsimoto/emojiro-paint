@@ -9,6 +9,9 @@
   const PROJECT_KEY = "emojiro-paint-project-v1";
   const SONG_KEY = "emojiro-paint-song-v2";
   const CUSTOM_STAMPS_KEY = "emojiro-paint-custom-stamps-v1";
+  const AUTOSAVE_KEY = "emojiro-paint-autosave-v1";
+  const PROJECT_LIBRARY_KEY = "emojiro-paint-library-v1";
+  const MAX_LIBRARY_PROJECTS = 8;
 
   const COLORS = [
     "#2d2a32", "#ffffff", "#e45b5b", "#f28c45", "#f7d25c", "#74b86f",
@@ -2446,7 +2449,8 @@
   function projectPayload() {
     return {
       format: "emojiro-paint-project",
-      version: 3,
+      version: 4,
+      name: ($("#projectNameInput").value || "Untitled Emojiro Project").trim().slice(0, 40),
       savedAt: new Date().toISOString(),
       paint: {
         frames,
@@ -2465,55 +2469,347 @@
     };
   }
 
+  let activeProjectId = null;
+  let projectLibrary = [];
+  let lastAutosaveSerialized = "";
+
+  function loadProjectLibrary() {
+    try {
+      const stored = JSON.parse(localStorage.getItem(PROJECT_LIBRARY_KEY) || "[]");
+      projectLibrary = Array.isArray(stored)
+        ? stored.filter((entry) => entry && entry.id && entry.payload).slice(0, MAX_LIBRARY_PROJECTS)
+        : [];
+    } catch (error) {
+      projectLibrary = [];
+    }
+  }
+
+  function persistProjectLibrary() {
+    localStorage.setItem(PROJECT_LIBRARY_KEY, JSON.stringify(projectLibrary));
+  }
+
+  function applyProjectPayload(project) {
+    if (!project || !project.paint || !Array.isArray(project.paint.frames) || !project.paint.frames.length) {
+      throw new Error("Invalid Emojiro project");
+    }
+
+    stopFramePreview();
+    stopMusic();
+
+    frames = project.paint.frames;
+    frameBeats = Array.isArray(project.paint.frameBeats)
+      ? project.paint.frameBeats.slice(0, frames.length).map((value) => Math.max(1, Math.min(8, Number(value) || 1)))
+      : frames.map(() => 1);
+    while (frameBeats.length < frames.length) frameBeats.push(1);
+
+    activeFrameIndex = Math.max(0, Math.min(Number(project.paint.activeFrameIndex) || 0, frames.length - 1));
+    $("#frameSpeed").value = Math.max(1, Math.min(12, Number(project.paint.frameSpeed) || 4));
+    $("#frameSpeedOut").textContent = $("#frameSpeed").value + " fps";
+
+    onionSkin = Boolean(project.paint.onionSkin);
+    syncMusic = Boolean(project.paint.syncMusic);
+    brushPattern = ["solid", "checker", "dots", "rainbow"].includes(project.paint.brushPattern)
+      ? project.paint.brushPattern
+      : "solid";
+    fillShapes = Boolean(project.paint.fillShapes);
+
+    $("#onionSkinToggle").checked = onionSkin;
+    $("#syncMusicToggle").checked = syncMusic;
+    $("#brushPatternSelect").value = brushPattern;
+    $("#fillShapeToggle").checked = fillShapes;
+    if (typeof project.paint.paintText === "string") {
+      $("#paintTextInput").value = project.paint.paintText.slice(0, 24);
+    }
+
+    if (Array.isArray(project.paint.customStamps)) {
+      customStamps = project.paint.customStamps
+        .filter((stamp) => stamp && Array.isArray(stamp.pixels) && stamp.pixels.length === 64)
+        .slice(0, 24);
+      activeCustomStampId = project.paint.activeCustomStampId || (customStamps[0] ? customStamps[0].id : null);
+      persistCustomStamps();
+    }
+
+    undoStack = [];
+    redoStack = [];
+    musicHistory = [];
+
+    syncFrameTimingUi();
+    renderCustomStampPalette();
+    syncCustomStampActions();
+    renderCanvas();
+    renderFrameList();
+
+    if (project.music) {
+      applySong(project.music);
+    } else {
+      sequence = makeSequence();
+      renderSequencer();
+    }
+
+    $("#projectNameInput").value = String(project.name || "Untitled Emojiro Project").slice(0, 40);
+    lastAutosaveSerialized = "";
+  }
+
+  function blankProjectPayload() {
+    const mix = Object.fromEntries(
+      INSTRUMENTS.map((instrument) => [instrument.id, { volume: 1, mute: false, solo: false, pan: 0 }])
+    );
+    return {
+      format: "emojiro-paint-project",
+      version: 4,
+      name: "Untitled Emojiro Project",
+      savedAt: new Date().toISOString(),
+      paint: {
+        frames: [blankFrame()],
+        frameBeats: [1],
+        activeFrameIndex: 0,
+        frameSpeed: 4,
+        onionSkin: false,
+        syncMusic: false,
+        brushPattern: "solid",
+        fillShapes: false,
+        paintText: "HELLO",
+        customStamps: deepClone(customStamps),
+        activeCustomStampId
+      },
+      music: {
+        format: "emojiro-paint-song",
+        version: 4,
+        name: "My Emoji Song",
+        tempo: 120,
+        timeSignature: 4,
+        endStep: SEQ_STEPS,
+        loop: true,
+        pitches: PITCHES,
+        steps: SEQ_STEPS,
+        maxLayersPerBeat: MAX_LAYERS,
+        sections: ["Section A", "Section B", "Section C", "Section D"],
+        mixer: mix,
+        sequence: makeSequence()
+      }
+    };
+  }
+
+  function exportProjectFile(payload, name) {
+    downloadText(
+      safeFilename(name || payload.name || "emojiro-project") + ".emojiro.json",
+      JSON.stringify(payload, null, 2),
+      "application/json"
+    );
+  }
+
+  function renderProjectLibrary() {
+    const list = $("#projectLibraryList");
+    list.innerHTML = "";
+    const sorted = projectLibrary.slice().sort((a, b) => Number(b.updatedAt) - Number(a.updatedAt));
+    $("#projectCount").textContent = sorted.length + (sorted.length === 1 ? " project" : " projects");
+
+    if (!sorted.length) {
+      const empty = document.createElement("div");
+      empty.className = "project-empty";
+      empty.textContent = "No named projects yet. Save the current project to build your library.";
+      list.appendChild(empty);
+      return;
+    }
+
+    sorted.forEach((entry) => {
+      const card = document.createElement("div");
+      card.className = "project-entry" + (entry.id === activeProjectId ? " active" : "");
+
+      const info = document.createElement("div");
+      info.className = "project-entry-info";
+      const name = document.createElement("div");
+      name.className = "project-entry-name";
+      name.textContent = entry.name;
+      const meta = document.createElement("div");
+      meta.className = "project-entry-meta";
+      const updated = new Date(entry.updatedAt);
+      meta.textContent = "Updated " + (Number.isNaN(updated.getTime()) ? "recently" : updated.toLocaleString());
+      info.append(name, meta);
+
+      const actions = document.createElement("div");
+      actions.className = "project-entry-actions";
+
+      const load = document.createElement("button");
+      load.type = "button";
+      load.className = "button small primary";
+      load.textContent = "Open";
+      load.addEventListener("click", () => {
+        try {
+          applyProjectPayload(deepClone(entry.payload));
+          activeProjectId = entry.id;
+          $("#projectNameInput").value = entry.name;
+          $("#projectLibraryDialog").close();
+          saveAutosave(true);
+          toast("Project opened");
+        } catch (error) {
+          toast("Project could not be opened");
+        }
+      });
+
+      const exportButton = document.createElement("button");
+      exportButton.type = "button";
+      exportButton.className = "button small";
+      exportButton.textContent = "Export";
+      exportButton.addEventListener("click", () => exportProjectFile(entry.payload, entry.name));
+
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "button small danger";
+      remove.textContent = "Delete";
+      remove.addEventListener("click", () => {
+        projectLibrary = projectLibrary.filter((item) => item.id !== entry.id);
+        if (activeProjectId === entry.id) activeProjectId = null;
+        try {
+          persistProjectLibrary();
+          renderProjectLibrary();
+          toast("Project deleted");
+        } catch (error) {
+          toast("Project library could not be updated");
+        }
+      });
+
+      actions.append(load, exportButton, remove);
+      card.append(info, actions);
+      list.appendChild(card);
+    });
+  }
+
+  function saveNamedProject() {
+    const name = ($("#projectNameInput").value || "Untitled Emojiro Project").trim().slice(0, 40);
+    const payload = projectPayload();
+    payload.name = name;
+    const now = Date.now();
+
+    if (activeProjectId) {
+      const existing = projectLibrary.find((entry) => entry.id === activeProjectId);
+      if (existing) {
+        existing.name = name;
+        existing.updatedAt = now;
+        existing.payload = payload;
+      } else {
+        activeProjectId = null;
+      }
+    }
+
+    if (!activeProjectId) {
+      activeProjectId = "project-" + now.toString(36);
+      projectLibrary.push({ id: activeProjectId, name, updatedAt: now, payload });
+    }
+
+    projectLibrary.sort((a, b) => Number(b.updatedAt) - Number(a.updatedAt));
+    projectLibrary = projectLibrary.slice(0, MAX_LIBRARY_PROJECTS);
+    try {
+      persistProjectLibrary();
+      renderProjectLibrary();
+      saveAutosave(true);
+      toast("Project saved to library");
+    } catch (error) {
+      toast("Project library is full on this device");
+    }
+  }
+
+  function saveAutosave(force = false) {
+    try {
+      const serialized = JSON.stringify(projectPayload());
+      if (!force && serialized === lastAutosaveSerialized) return;
+      localStorage.setItem(AUTOSAVE_KEY, serialized);
+      lastAutosaveSerialized = serialized;
+      const now = new Date();
+      $("#autosaveStatus").textContent = "Saved " + now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    } catch (error) {
+      $("#autosaveStatus").textContent = "Autosave unavailable";
+    }
+  }
+
+  function recoverAutosave() {
+    const raw = localStorage.getItem(AUTOSAVE_KEY);
+    if (!raw) return false;
+    try {
+      const project = JSON.parse(raw);
+      applyProjectPayload(project);
+      lastAutosaveSerialized = raw;
+      $("#autosaveStatus").textContent = "Autosave recovered";
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
   $("#saveProjectBtn").addEventListener("click", () => {
-    localStorage.setItem(PROJECT_KEY, JSON.stringify(projectPayload()));
-    toast("Project saved on this device");
+    try {
+      const payload = projectPayload();
+      localStorage.setItem(PROJECT_KEY, JSON.stringify(payload));
+      saveAutosave(true);
+      toast("Quick save complete");
+    } catch (error) {
+      toast("Project could not be saved");
+    }
   });
 
   $("#loadProjectBtn").addEventListener("click", () => {
     const raw = localStorage.getItem(PROJECT_KEY);
-    if (!raw) return toast("No saved project yet");
+    if (!raw) return toast("No quick save yet");
     try {
-      const project = JSON.parse(raw);
-      stopFramePreview();
-      if (project.paint && Array.isArray(project.paint.frames) && project.paint.frames.length) {
-        frames = project.paint.frames;
-        frameBeats = Array.isArray(project.paint.frameBeats)
-          ? project.paint.frameBeats.slice(0, frames.length).map((value) => Math.max(1, Math.min(8, Number(value) || 1)))
-          : frames.map(() => 1);
-        while (frameBeats.length < frames.length) frameBeats.push(1);
-        activeFrameIndex = Math.min(project.paint.activeFrameIndex || 0, frames.length - 1);
-        $("#frameSpeed").value = project.paint.frameSpeed || 4;
-        $("#frameSpeedOut").textContent = $("#frameSpeed").value + " fps";
-        onionSkin = Boolean(project.paint.onionSkin);
-        syncMusic = Boolean(project.paint.syncMusic);
-        brushPattern = ["solid", "checker", "dots", "rainbow"].includes(project.paint.brushPattern) ? project.paint.brushPattern : "solid";
-        fillShapes = Boolean(project.paint.fillShapes);
-        $("#onionSkinToggle").checked = onionSkin;
-        $("#syncMusicToggle").checked = syncMusic;
-        $("#brushPatternSelect").value = brushPattern;
-        $("#fillShapeToggle").checked = fillShapes;
-        if (typeof project.paint.paintText === "string") $("#paintTextInput").value = project.paint.paintText.slice(0, 24);
-        if (Array.isArray(project.paint.customStamps)) {
-          customStamps = project.paint.customStamps
-            .filter((stamp) => stamp && Array.isArray(stamp.pixels) && stamp.pixels.length === 64)
-            .slice(0, 24);
-          activeCustomStampId = project.paint.activeCustomStampId || (customStamps[0] ? customStamps[0].id : null);
-          persistCustomStamps();
-          renderCustomStampPalette();
-        }
-        undoStack = [];
-        redoStack = [];
-        syncFrameTimingUi();
-        renderCanvas();
-        renderFrameList();
-      }
-      if (project.music) applySong(project.music);
-      toast("Project loaded");
+      applyProjectPayload(JSON.parse(raw));
+      activeProjectId = null;
+      saveAutosave(true);
+      toast("Quick save loaded");
     } catch (error) {
       toast("Saved project could not be loaded");
     }
   });
+
+  $("#projectsBtn").addEventListener("click", () => {
+    loadProjectLibrary();
+    renderProjectLibrary();
+    $("#projectLibraryDialog").showModal();
+  });
+
+  $("#closeProjectsBtn").addEventListener("click", () => {
+    $("#projectLibraryDialog").close();
+  });
+
+  $("#saveNamedProjectBtn").addEventListener("click", saveNamedProject);
+
+  $("#newProjectBtn").addEventListener("click", () => {
+    try {
+      applyProjectPayload(blankProjectPayload());
+      activeProjectId = null;
+      $("#projectNameInput").value = "Untitled Emojiro Project";
+      $("#projectLibraryDialog").close();
+      saveAutosave(true);
+      toast("New project started");
+    } catch (error) {
+      toast("New project could not be created");
+    }
+  });
+
+  $("#exportProjectBtn").addEventListener("click", () => {
+    const payload = projectPayload();
+    exportProjectFile(payload, payload.name);
+    toast("Project exported");
+  });
+
+  $("#importProjectInput").addEventListener("change", async (event) => {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+    try {
+      const project = JSON.parse(await file.text());
+      if (project.format !== "emojiro-paint-project") throw new Error("Wrong project type");
+      applyProjectPayload(project);
+      activeProjectId = null;
+      $("#projectLibraryDialog").close();
+      saveAutosave(true);
+      toast("Project imported");
+    } catch (error) {
+      toast("That file is not an Emojiro project");
+    } finally {
+      event.target.value = "";
+    }
+  });
+
+  loadProjectLibrary();
 
   // -----------------------------
   // Keyboard helpers
@@ -2559,4 +2855,13 @@
   renderInstrumentMixer();
   updateComposerButtons();
   renderSequencer();
+
+  const recovered = recoverAutosave();
+  if (!recovered) saveAutosave(true);
+  setInterval(() => saveAutosave(), 7000);
+  window.addEventListener("pagehide", () => saveAutosave(true));
+
+  if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) {
+    navigator.serviceWorker.register("./sw.js").catch(() => {});
+  }
 })();
