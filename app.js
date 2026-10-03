@@ -757,6 +757,7 @@
     activeFrameIndex = frames.length - 1;
     undoStack = [];
     redoStack = [];
+    syncFrameTimingUi();
     renderCanvas();
     renderFrameList();
   });
@@ -768,6 +769,7 @@
     activeFrameIndex += 1;
     undoStack = [];
     redoStack = [];
+    syncFrameTimingUi();
     renderCanvas();
     renderFrameList();
   });
@@ -780,6 +782,7 @@
     activeFrameIndex = Math.max(0, activeFrameIndex - 1);
     undoStack = [];
     redoStack = [];
+    syncFrameTimingUi();
     renderCanvas();
     renderFrameList();
   });
@@ -803,6 +806,7 @@
     frameBeats[activeFrameIndex] = frameBeats[nextIndex];
     frameBeats[nextIndex] = beatTemp;
     activeFrameIndex = nextIndex;
+    syncFrameTimingUi();
     renderCanvas();
     renderFrameList();
   }
