@@ -1169,6 +1169,9 @@
   let measureClipboard = null;
   let selectedSection = 0;
   let sectionNames = ["Section A", "Section B", "Section C", "Section D"];
+  let sectionTempoOverrides = Array(SECTION_COUNT).fill(null);
+  let humanizeMs = 0;
+  let percussionPattern = Array.from({ length: PERCUSSION_LANES.length }, () => Array(SEQ_STEPS).fill(false));
   let sectionClipboard = null;
   let activeMixMultiplier = 1;
   let activeMixPan = 0;
@@ -1220,6 +1223,12 @@
     "ii-V-I-I": ["D-F-A","G-B-D","C-E-G","C-E-G"]
   };
   const LIVE_KEYBOARD_KEYS = ["a","w","s","e","d","f","t","g","y","h","u","j","k"];
+  const PERCUSSION_LANES = [
+    { id: "kick", emoji: "🍄", name: "Kick", instrument: "drum", pitch: "B3", midi: 36 },
+    { id: "clack", emoji: "🚢", name: "Clack", instrument: "ship", pitch: "C4", midi: 38 },
+    { id: "duck", emoji: "🦆", name: "Duck", instrument: "duck", pitch: "G4", midi: 42 },
+    { id: "zap", emoji: "🎮", name: "Zap", instrument: "game", pitch: "C5", midi: 46 }
+  ];
   let liveRecordEnabled = false;
   let liveRecordTakeStarted = false;
   let instrumentMix = Object.fromEntries(
@@ -1230,6 +1239,35 @@
 
   function makeSequence() {
     return Array.from({ length: PITCHES.length }, () => Array(SEQ_STEPS).fill(null));
+  }
+
+  function makePercussionPattern() {
+    return Array.from({ length: PERCUSSION_LANES.length }, () => Array(SEQ_STEPS).fill(false));
+  }
+
+  function normalizePercussion(input) {
+    const out = makePercussionPattern();
+    if (!Array.isArray(input)) return out;
+    for (let lane = 0; lane < Math.min(PERCUSSION_LANES.length, input.length); lane += 1) {
+      if (!Array.isArray(input[lane])) continue;
+      for (let step = 0; step < Math.min(SEQ_STEPS, input[lane].length); step += 1) {
+        out[lane][step] = Boolean(input[lane][step]);
+      }
+    }
+    return out;
+  }
+
+  function effectiveTempoAtStep(step) {
+    const section = Math.max(0, Math.min(SECTION_COUNT - 1, Math.floor(step / SECTION_LENGTH)));
+    const override = Number(sectionTempoOverrides[section]);
+    return override >= 40 && override <= 480 ? override : Number($("#tempoSlider").value);
+  }
+
+  function humanizeOffsetMs(index, step) {
+    if (!humanizeMs) return 0;
+    const raw = Math.sin((step + 1) * 12.9898 + (index + 1) * 78.233) * 43758.5453;
+    const unit = raw - Math.floor(raw);
+    return Math.round(unit * humanizeMs);
   }
 
   function instrumentById(id) {
@@ -1582,6 +1620,9 @@
       timeSignature,
       loopMusic,
       sectionNames: sectionNames.slice(),
+      sectionTempoOverrides: sectionTempoOverrides.slice(),
+      percussionPattern: deepClone(percussionPattern),
+      humanizeMs,
       instrumentMix: deepClone(instrumentMix)
     });
     if (musicHistory.length > MAX_UNDO) musicHistory.shift();
@@ -1602,6 +1643,16 @@
     return Math.max(0, Math.min(SECTION_COUNT - 1, index)) * SECTION_LENGTH;
   }
 
+  function syncSectionTempoUi() {
+    const override = sectionTempoOverrides[selectedSection];
+    const enabled = Number(override) >= 40;
+    const value = enabled ? Number(override) : Number($("#tempoSlider").value);
+    $("#sectionTempoToggle").checked = enabled;
+    $("#sectionTempoSlider").disabled = !enabled;
+    $("#sectionTempoSlider").value = value;
+    $("#sectionTempoOut").textContent = enabled ? value + " BPM" : "Global " + $("#tempoSlider").value;
+  }
+
   function renderSectionBar() {
     const bar = $("#sectionBar");
     bar.innerHTML = "";
@@ -1610,13 +1661,27 @@
       const button = document.createElement("button");
       button.type = "button";
       button.className = "section-button" + (index === selectedSection ? " active" : "");
-      button.innerHTML = (sectionNames[index] || ("Section " + String.fromCharCode(65 + index))) +
-        "<span>beats " + (start + 1) + "–" + (start + SECTION_LENGTH) + "</span>";
+
+      const title = document.createElement("strong");
+      title.textContent = sectionNames[index] || ("Section " + String.fromCharCode(65 + index));
+      const beats = document.createElement("span");
+      beats.textContent = "beats " + (start + 1) + "–" + (start + SECTION_LENGTH);
+      button.append(title, beats);
+
+      if (Number(sectionTempoOverrides[index]) >= 40) {
+        const tempo = document.createElement("span");
+        tempo.className = "tempo-badge";
+        tempo.textContent = sectionTempoOverrides[index] + " BPM";
+        button.appendChild(tempo);
+      }
+
       button.addEventListener("click", () => {
         selectedSection = index;
         measureEditStep = start;
         $("#sectionNameInput").value = sectionNames[index];
         renderSectionBar();
+        renderPercussionGrid();
+        syncSectionTempoUi();
         refreshSectionSelection();
         refreshMeasureSelection();
         const header = $('.seq-step[data-step="' + start + '"]');
@@ -1629,6 +1694,8 @@
     $("#moveSectionLeftBtn").disabled = selectedSection === 0;
     $("#moveSectionRightBtn").disabled = selectedSection === SECTION_COUNT - 1;
     $("#duplicateSectionBtn").disabled = selectedSection === SECTION_COUNT - 1;
+    $("#variationSectionBtn").disabled = selectedSection === SECTION_COUNT - 1;
+    syncSectionTempoUi();
   }
 
   function refreshSectionSelection() {
@@ -1643,15 +1710,31 @@
 
   function copySectionData(index) {
     const start = sectionStart(index);
-    return sequence.map((row) => row.slice(start, start + SECTION_LENGTH));
+    return {
+      rows: sequence.map((row) => row.slice(start, start + SECTION_LENGTH)),
+      percussion: percussionPattern.map((lane) => lane.slice(start, start + SECTION_LENGTH)),
+      tempo: sectionTempoOverrides[index],
+      name: sectionNames[index]
+    };
   }
 
-  function pasteSectionData(index, rows) {
+  function pasteSectionData(index, data) {
     const start = sectionStart(index);
+    const rows = data && data.rows ? data.rows : data;
     for (let row = 0; row < PITCHES.length; row += 1) {
       for (let offset = 0; offset < SECTION_LENGTH; offset += 1) {
-        sequence[row][start + offset] = (rows[row] && rows[row][offset]) || null;
+        sequence[row][start + offset] = (rows && rows[row] && rows[row][offset]) || null;
       }
+    }
+    if (data && data.percussion) {
+      for (let lane = 0; lane < PERCUSSION_LANES.length; lane += 1) {
+        for (let offset = 0; offset < SECTION_LENGTH; offset += 1) {
+          percussionPattern[lane][start + offset] = Boolean(data.percussion[lane] && data.percussion[lane][offset]);
+        }
+      }
+    }
+    if (data && Object.prototype.hasOwnProperty.call(data, "tempo")) {
+      sectionTempoOverrides[index] = data.tempo == null ? null : Number(data.tempo);
     }
   }
 
@@ -1661,9 +1744,8 @@
     const bData = copySectionData(b);
     pasteSectionData(a, bData);
     pasteSectionData(b, aData);
-    const name = sectionNames[a];
-    sectionNames[a] = sectionNames[b];
-    sectionNames[b] = name;
+    sectionNames[a] = bData.name;
+    sectionNames[b] = aData.name;
   }
 
   $("#sectionNameInput").addEventListener("input", (event) => {
@@ -1672,10 +1754,7 @@
   });
 
   $("#copySectionBtn").addEventListener("click", () => {
-    sectionClipboard = {
-      rows: copySectionData(selectedSection),
-      name: sectionNames[selectedSection]
-    };
+    sectionClipboard = deepClone(copySectionData(selectedSection));
     $("#pasteSectionBtn").disabled = false;
     toast("Section copied");
   });
@@ -1683,7 +1762,10 @@
   $("#pasteSectionBtn").addEventListener("click", () => {
     if (!sectionClipboard) return;
     pushMusicHistory();
-    pasteSectionData(selectedSection, sectionClipboard.rows);
+    pasteSectionData(selectedSection, sectionClipboard);
+    if (sectionClipboard.name) sectionNames[selectedSection] = sectionClipboard.name.slice(0, 16);
+    renderSectionBar();
+    renderPercussionGrid();
     renderSequencer();
     toast("Section pasted");
   });
@@ -1692,11 +1774,13 @@
     if (selectedSection >= SECTION_COUNT - 1) return;
     pushMusicHistory();
     const target = selectedSection + 1;
-    pasteSectionData(target, copySectionData(selectedSection));
+    const copy = copySectionData(selectedSection);
+    pasteSectionData(target, copy);
     sectionNames[target] = (sectionNames[selectedSection] + " Copy").slice(0, 16);
     selectedSection = target;
     measureEditStep = sectionStart(target);
     renderSectionBar();
+    renderPercussionGrid();
     renderSequencer();
     toast("Section duplicated");
   });
@@ -1708,6 +1792,7 @@
     selectedSection -= 1;
     measureEditStep = sectionStart();
     renderSectionBar();
+    renderPercussionGrid();
     renderSequencer();
   });
 
@@ -1718,14 +1803,204 @@
     selectedSection += 1;
     measureEditStep = sectionStart();
     renderSectionBar();
+    renderPercussionGrid();
     renderSequencer();
   });
 
   $("#clearSectionBtn").addEventListener("click", () => {
     pushMusicHistory();
-    pasteSectionData(selectedSection, Array.from({ length: PITCHES.length }, () => Array(SECTION_LENGTH).fill(null)));
+    pasteSectionData(selectedSection, {
+      rows: Array.from({ length: PITCHES.length }, () => Array(SECTION_LENGTH).fill(null)),
+      percussion: Array.from({ length: PERCUSSION_LANES.length }, () => Array(SECTION_LENGTH).fill(false)),
+      tempo: sectionTempoOverrides[selectedSection]
+    });
+    renderPercussionGrid();
     renderSequencer();
     toast("Section cleared");
+  });
+
+  $("#sectionTempoToggle").addEventListener("change", (event) => {
+    pushMusicHistory();
+    sectionTempoOverrides[selectedSection] = event.target.checked
+      ? Number($("#tempoSlider").value)
+      : null;
+    renderSectionBar();
+  });
+
+  $("#sectionTempoSlider").addEventListener("input", (event) => {
+    sectionTempoOverrides[selectedSection] = Number(event.target.value);
+    $("#sectionTempoOut").textContent = event.target.value + " BPM";
+    renderSectionBar();
+  });
+
+  $("#variationSectionBtn").addEventListener("click", () => {
+    if (selectedSection >= SECTION_COUNT - 1) return;
+    pushMusicHistory();
+    const source = copySectionData(selectedSection);
+    const target = selectedSection + 1;
+    pasteSectionData(target, source);
+    sectionNames[target] = (sectionNames[selectedSection] + " Var").slice(0, 16);
+
+    const start = sectionStart(target);
+    for (let step = start; step < start + SECTION_LENGTH; step += 1) {
+      if (Math.random() < .22) {
+        const occupied = [];
+        for (let row = 0; row < PITCHES.length; row += 1) {
+          if (sequence[row][step]) occupied.push(row);
+        }
+        if (occupied.length && Math.random() < .65) {
+          const row = occupied[Math.floor(Math.random() * occupied.length)];
+          const id = sequence[row][step];
+          const direction = Math.random() < .5 ? -1 : 1;
+          const nextRow = Math.max(0, Math.min(PITCHES.length - 1, row + direction));
+          if (!sequence[nextRow][step]) {
+            sequence[row][step] = null;
+            sequence[nextRow][step] = id;
+          }
+        }
+      }
+    }
+
+    for (let lane = 0; lane < PERCUSSION_LANES.length; lane += 1) {
+      for (let offset = 0; offset < SECTION_LENGTH; offset += 1) {
+        if (Math.random() < .09) {
+          percussionPattern[lane][start + offset] = !percussionPattern[lane][start + offset];
+        }
+      }
+    }
+
+    selectedSection = target;
+    measureEditStep = start;
+    renderSectionBar();
+    renderPercussionGrid();
+    renderSequencer();
+    toast("Variation created");
+  });
+
+  function renderPercussionGrid() {
+    const grid = $("#percussionGrid");
+    if (!grid) return;
+    grid.innerHTML = "";
+
+    const corner = document.createElement("div");
+    corner.className = "percussion-label";
+    corner.textContent = "Lane";
+    grid.appendChild(corner);
+
+    for (let offset = 0; offset < SECTION_LENGTH; offset += 1) {
+      const header = document.createElement("div");
+      header.className = "percussion-step";
+      header.textContent = offset + 1;
+      grid.appendChild(header);
+    }
+
+    const start = sectionStart();
+    PERCUSSION_LANES.forEach((lane, laneIndex) => {
+      const label = document.createElement("div");
+      label.className = "percussion-label";
+      label.textContent = lane.emoji + " " + lane.name;
+      grid.appendChild(label);
+
+      for (let offset = 0; offset < SECTION_LENGTH; offset += 1) {
+        const step = start + offset;
+        const cell = document.createElement("button");
+        cell.type = "button";
+        cell.className = "percussion-cell" +
+          (percussionPattern[laneIndex][step] ? " active" : "") +
+          (offset % timeSignature === 0 ? " measure" : "");
+        cell.dataset.lane = laneIndex;
+        cell.dataset.step = step;
+        cell.textContent = percussionPattern[laneIndex][step] ? lane.emoji : "";
+        cell.setAttribute("aria-label", lane.name + ", beat " + (step + 1));
+        cell.addEventListener("click", () => {
+          pushMusicHistory();
+          percussionPattern[laneIndex][step] = !percussionPattern[laneIndex][step];
+          renderPercussionGrid();
+          if (percussionPattern[laneIndex][step]) {
+            playInstrument(lane.instrument, noteToFrequency(lane.pitch), .22);
+          }
+        });
+        grid.appendChild(cell);
+      }
+    });
+  }
+
+  function applyDrumPreset(name) {
+    const start = sectionStart();
+    for (let lane = 0; lane < PERCUSSION_LANES.length; lane += 1) {
+      for (let offset = 0; offset < SECTION_LENGTH; offset += 1) {
+        percussionPattern[lane][start + offset] = false;
+      }
+    }
+
+    for (let offset = 0; offset < SECTION_LENGTH; offset += 1) {
+      const beat = offset % Math.max(1, timeSignature);
+      if (name === "four") {
+        percussionPattern[0][start + offset] = true;
+        if (beat === 1 || beat === 3) percussionPattern[1][start + offset] = true;
+      } else if (name === "backbeat") {
+        if (beat === 0) percussionPattern[0][start + offset] = true;
+        if (beat === 1 || beat === 3) percussionPattern[1][start + offset] = true;
+        if (offset % 2 === 1) percussionPattern[2][start + offset] = true;
+      } else if (name === "bounce") {
+        if (offset % 2 === 0) percussionPattern[0][start + offset] = true;
+        if (offset % 4 === 2) percussionPattern[1][start + offset] = true;
+        if (offset % 3 === 1) percussionPattern[2][start + offset] = true;
+        if (offset % 6 === 5) percussionPattern[3][start + offset] = true;
+      } else {
+        if (offset % Math.max(2, timeSignature) === 0) percussionPattern[0][start + offset] = true;
+        if (offset % 8 === 4) percussionPattern[1][start + offset] = true;
+      }
+    }
+  }
+
+  $("#applyDrumPresetBtn").addEventListener("click", () => {
+    pushMusicHistory();
+    applyDrumPreset($("#drumPresetSelect").value);
+    renderPercussionGrid();
+    toast("Percussion preset applied");
+  });
+
+  $("#clearDrumsBtn").addEventListener("click", () => {
+    pushMusicHistory();
+    const start = sectionStart();
+    for (let lane = 0; lane < PERCUSSION_LANES.length; lane += 1) {
+      for (let offset = 0; offset < SECTION_LENGTH; offset += 1) {
+        percussionPattern[lane][start + offset] = false;
+      }
+    }
+    renderPercussionGrid();
+  });
+
+  $("#randomDensity").addEventListener("input", (event) => {
+    $("#randomDensityOut").textContent = event.target.value + "%";
+  });
+
+  $("#humanizeSlider").addEventListener("input", (event) => {
+    humanizeMs = Number(event.target.value);
+    $("#humanizeOut").textContent = event.target.value + " ms";
+  });
+
+  $("#randomizeSectionBtn").addEventListener("click", () => {
+    pushMusicHistory();
+    const density = Number($("#randomDensity").value) / 100;
+    const allowed = new Set(SCALE_GUIDES[scaleAssist] || SCALE_GUIDES.all);
+    const rows = PITCHES.map((pitch, row) => ({ pitch, row }))
+      .filter((entry) => allowed.has(noteClass(entry.pitch)));
+    const start = sectionStart();
+    const end = Math.min(songEndStep, start + SECTION_LENGTH);
+    let added = 0;
+
+    for (let step = start; step < end; step += 1) {
+      if (Math.random() > density || noteCountAtStep(step) >= MAX_LAYERS || !rows.length) continue;
+      const pick = rows[Math.floor(Math.random() * rows.length)];
+      if (!sequence[pick.row][step]) {
+        sequence[pick.row][step] = selectedInstrument;
+        added += 1;
+      }
+    }
+    renderSequencer();
+    toast(added ? "Random melody added" : "No notes added");
   });
 
   function currentMeasureStart() {
@@ -2076,6 +2351,10 @@
     const denom = Math.max(1, songEndStep - 1);
     runner.style.left = "calc(" + ((currentStep / denom) * 100) + "% - 14px)";
 
+    $$("#percussionGrid .percussion-cell").forEach((cell) => {
+      cell.classList.toggle("playing", isMusicPlaying && Number(cell.dataset.step) === currentStep);
+    });
+
     if (isMusicPlaying && currentStep % timeSignature === 0) {
       const header = $('.seq-step[data-step="' + currentStep + '"]', sequencer);
       if (header) header.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
@@ -2084,21 +2363,30 @@
 
   function playStep(step) {
     updateSyncedAnimationForBeat(step);
-    const bpm = Number($("#tempoSlider").value);
+    const bpm = effectiveTempoAtStep(step);
     const beatDuration = 60 / bpm;
     const ac = ensureAudio();
     const now = ac.currentTime + .01;
+    $("#tempoReadout").textContent = bpm;
 
     PITCHES.forEach((pitch, row) => {
       const id = sequence[row][step];
-      if (id) playInstrument(id, noteToFrequency(pitch), Math.min(.55, beatDuration * .82), now);
+      if (id) {
+        const when = now + humanizeOffsetMs(row, step) / 1000;
+        playInstrument(id, noteToFrequency(pitch), Math.min(.55, beatDuration * .82), when);
+      }
+    });
+
+    PERCUSSION_LANES.forEach((lane, laneIndex) => {
+      if (!percussionPattern[laneIndex][step]) return;
+      const when = now + humanizeOffsetMs(PITCHES.length + laneIndex, step) / 1000;
+      playInstrument(lane.instrument, noteToFrequency(lane.pitch), Math.min(.45, beatDuration * .72), when);
     });
   }
 
   function scheduleNextStep() {
     if (!isMusicPlaying) return;
-    const bpm = Number($("#tempoSlider").value);
-    const delay = 60000 / bpm;
+    const delay = 60000 / effectiveTempoAtStep(currentStep);
 
     musicTimer = setTimeout(() => {
       const next = currentStep + 1;
@@ -2148,6 +2436,7 @@
     musicTimer = null;
     currentStep = 0;
     $("#playMusicBtn").textContent = "▶ Play";
+    $("#tempoReadout").textContent = $("#tempoSlider").value;
     refreshPlayhead();
     if (syncedAnimationPreview && !fromAnimation) {
       syncedAnimationPreview = false;
@@ -2228,8 +2517,14 @@
     timeSignature = previous.timeSignature;
     loopMusic = previous.loopMusic;
     if (Array.isArray(previous.sectionNames)) sectionNames = previous.sectionNames.slice(0, SECTION_COUNT);
+    if (Array.isArray(previous.sectionTempoOverrides)) sectionTempoOverrides = previous.sectionTempoOverrides.slice(0, SECTION_COUNT);
+    if (Array.isArray(previous.percussionPattern)) percussionPattern = normalizePercussion(previous.percussionPattern);
+    if (Number.isFinite(previous.humanizeMs)) humanizeMs = previous.humanizeMs;
     if (previous.instrumentMix) instrumentMix = deepClone(previous.instrumentMix);
+    $("#humanizeSlider").value = humanizeMs;
+    $("#humanizeOut").textContent = humanizeMs + " ms";
     renderSectionBar();
+    renderPercussionGrid();
     renderInstrumentMixer();
     updateComposerButtons();
     renderSequencer();
@@ -2258,6 +2553,7 @@
   $("#tempoSlider").addEventListener("input", (event) => {
     $("#tempoOut").textContent = event.target.value + " BPM";
     $("#tempoReadout").textContent = event.target.value;
+    syncSectionTempoUi();
   });
 
   $("#scaleAssistSelect").addEventListener("change", (event) => {
@@ -2430,7 +2726,7 @@
 
     return {
       format: "emojiro-paint-song",
-      version: 6,
+      version: 7,
       name: String(compact.n || "Shared Emoji Song").slice(0, 40),
       tempo: Math.max(40, Math.min(480, Number(compact.t) || 120)),
       timeSignature: Number(compact.m) === 3 ? 3 : 4,
@@ -2478,6 +2774,9 @@
       steps: SEQ_STEPS,
       maxLayersPerBeat: MAX_LAYERS,
       sections: sectionNames.slice(),
+      sectionTempoOverrides: sectionTempoOverrides.slice(),
+      percussion: percussionPattern,
+      humanizeMs,
       sectionLoop: sectionLoopEnabled,
       view: {
         zoom: composerZoom,
@@ -2520,6 +2819,16 @@
     sectionNames = Array.isArray(song.sections)
       ? Array.from({ length: SECTION_COUNT }, (_, index) => String(song.sections[index] || ("Section " + String.fromCharCode(65 + index))).slice(0, 16))
       : ["Section A", "Section B", "Section C", "Section D"];
+    sectionTempoOverrides = Array.isArray(song.sectionTempoOverrides)
+      ? Array.from({ length: SECTION_COUNT }, (_, index) => {
+          const value = Number(song.sectionTempoOverrides[index]);
+          return value >= 40 && value <= 480 ? value : null;
+        })
+      : Array(SECTION_COUNT).fill(null);
+    percussionPattern = normalizePercussion(song.percussion);
+    humanizeMs = Math.max(0, Math.min(60, Number(song.humanizeMs) || 0));
+    $("#humanizeSlider").value = humanizeMs;
+    $("#humanizeOut").textContent = humanizeMs + " ms";
     if (song.mixer && typeof song.mixer === "object") {
       INSTRUMENTS.forEach((instrument) => {
         const saved = song.mixer[instrument.id];
@@ -2555,6 +2864,7 @@
     applyComposerView();
     updateComposerButtons();
     renderSectionBar();
+    renderPercussionGrid();
     renderInstrumentMixer();
     renderSequencer();
   }
@@ -3638,6 +3948,7 @@
   renderFrameList();
   renderInstrumentBank();
   renderSectionBar();
+  renderPercussionGrid();
   renderInstrumentMixer();
   updateComposerButtons();
   renderSequencer();
