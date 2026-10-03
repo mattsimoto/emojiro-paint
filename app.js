@@ -1171,7 +1171,7 @@
   let sectionNames = ["Section A", "Section B", "Section C", "Section D"];
   let sectionTempoOverrides = Array(SECTION_COUNT).fill(null);
   let humanizeMs = 0;
-  let percussionPattern = Array.from({ length: PERCUSSION_LANES.length }, () => Array(SEQ_STEPS).fill(false));
+  let percussionPattern = null;
   let sectionClipboard = null;
   let activeMixMultiplier = 1;
   let activeMixPan = 0;
@@ -1229,6 +1229,7 @@
     { id: "duck", emoji: "🦆", name: "Duck", instrument: "duck", pitch: "G4", midi: 42 },
     { id: "zap", emoji: "🎮", name: "Zap", instrument: "game", pitch: "C5", midi: 46 }
   ];
+  percussionPattern = makePercussionPattern();
   let liveRecordEnabled = false;
   let liveRecordTakeStarted = false;
   let instrumentMix = Object.fromEntries(
