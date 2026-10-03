@@ -20,7 +20,8 @@ async function loadApp(page, errors) {
   assert(response && response.ok(), "App did not return a successful HTTP response");
   await page.waitForSelector("#paintCanvas");
   assert.equal(await page.title(), "Emojiro Paint");
-  await page.waitForTimeout(150);
+  await page.waitForTimeout(250);
+  assert.deepEqual(errors, [], "Startup browser errors occurred:\n" + errors.join("\n"));
 }
 
 async function desktopSmoke(browser) {
