@@ -21,7 +21,12 @@ jobs:
           node-version: 22
 
       - name: Check JavaScript syntax
-        run: node --check app.js
+        run: |
+          node --check app.js
+          node --check tests/validate.mjs
+
+      - name: Run DOM and selector smoke validation
+        run: node tests/validate.mjs
 
       - name: Check required files
         run: |
