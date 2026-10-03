@@ -56,6 +56,16 @@ const requiredIds = [
   "fillProgressionBtn",
   "liveRecordBtn",
   "liveKeyboard",
+  "sectionTempoToggle",
+  "sectionTempoSlider",
+  "variationSectionBtn",
+  "randomDensity",
+  "humanizeSlider",
+  "randomizeSectionBtn",
+  "drumPresetSelect",
+  "applyDrumPresetBtn",
+  "clearDrumsBtn",
+  "percussionGrid",
   "projectLibraryDialog",
   "projectNameInput",
   "projectLibraryList",
@@ -74,3 +84,18 @@ console.log(
   idSet.size + " unique ids,",
   new Set(idRefs).size + " JavaScript id references checked."
 );
+
+
+const requiredJsMarkers = [
+  "function effectiveTempoAtStep",
+  "function renderPercussionGrid",
+  "sectionTempoOverrides",
+  "percussionPattern",
+  "humanizeMs",
+  "version: 7"
+];
+
+const missingMarkers = requiredJsMarkers.filter((marker) => !js.includes(marker));
+if (missingMarkers.length) {
+  throw new Error("Required arrangement code missing: " + missingMarkers.join(", "));
+}
