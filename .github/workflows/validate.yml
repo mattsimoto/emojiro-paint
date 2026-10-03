@@ -40,3 +40,22 @@ jobs:
           test -f manifest.webmanifest
           test -f favicon.svg
           test -f sw.js
+          test -f tests/browser-smoke.mjs
+
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Start Emojiro Paint
+        run: |
+          python3 -m http.server 8000 --bind 127.0.0.1 > /tmp/emojiro-server.log 2>&1 &
+          echo $! > /tmp/emojiro-server.pid
+          curl --retry 20 --retry-connrefused --retry-delay 1 --fail http://127.0.0.1:8000/ > /dev/null
+
+      - name: Run Chromium browser smoke test
+        run: node tests/browser-smoke.mjs
+
+      - name: Show server log on failure
+        if: failure()
+        run: cat /tmp/emojiro-server.log || true
