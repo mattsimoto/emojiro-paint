@@ -57,6 +57,7 @@
               <button class="tool-button" data-tool="ellipse" type="button"><span>⭕</span>Ellipse</button>
               <button class="tool-button" data-tool="spray" type="button"><span>💨</span>Spray</button>
               <button class="tool-button" data-tool="customstamp" type="button"><span>🧩</span>My Stamp</button>
+              <button class="tool-button" data-tool="text" type="button"><span>🔤</span>Text</button>
             </div>
 
             <h3>Ink</h3>
@@ -68,6 +69,24 @@
             <div class="custom-stamp-row">
               <button id="openStampMakerBtn" class="button small" type="button">🧩 Make stamp</button>
               <div id="customStampPalette" class="custom-stamp-palette" aria-label="Custom stamps"></div>
+            </div>
+
+            <h3>Brush & Shape</h3>
+            <div class="paint-options">
+              <label>
+                Pattern
+                <select id="brushPatternSelect">
+                  <option value="solid">Solid</option>
+                  <option value="checker">Checker</option>
+                  <option value="dots">Dots</option>
+                  <option value="rainbow">Rainbow</option>
+                </select>
+              </label>
+              <label class="check-row"><input id="fillShapeToggle" type="checkbox" /> Fill boxes & ellipses</label>
+              <label class="text-paint-row">
+                Text
+                <input id="paintTextInput" type="text" maxlength="24" value="HELLO" />
+              </label>
             </div>
 
             <div class="stacked-actions">
