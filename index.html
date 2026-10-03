@@ -100,8 +100,8 @@
       <section id="musicPanel" class="panel" aria-labelledby="musicTitle">
         <div class="panel-heading">
           <div>
-            <h2 id="musicTitle">Music Maker</h2>
-            <p>Place emoji notes on the grid. Every emoji is a playable instrument.</p>
+            <h2 id="musicTitle">Emoji Composer</h2>
+            <p>Classic staff-style composition rebuilt with emoji instruments and Web Audio.</p>
           </div>
           <div class="status-pill"><span id="tempoReadout">120</span> BPM</div>
         </div>
@@ -110,41 +110,64 @@
           <div class="transport">
             <button id="playMusicBtn" class="button primary transport-button" type="button">▶ Play</button>
             <button id="stopMusicBtn" class="button transport-button" type="button">■ Stop</button>
-            <button id="randomMusicBtn" class="button" type="button">🎲 Remix</button>
+            <button id="loopMusicBtn" class="button toggle-button active" type="button" aria-pressed="true">🔁 Loop</button>
+            <button id="undoMusicBtn" class="button" type="button">↶ Undo</button>
             <button id="clearMusicBtn" class="button danger" type="button">🗑️ Clear</button>
           </div>
 
           <label class="range-row tempo-row">
             <span>Tempo</span>
-            <input id="tempoSlider" type="range" min="60" max="220" value="120" />
+            <input id="tempoSlider" type="range" min="40" max="480" value="120" />
             <output id="tempoOut">120 BPM</output>
           </label>
 
-          <label class="range-row">
-            <span>Swing</span>
-            <input id="swingSlider" type="range" min="0" max="45" value="0" />
-            <output id="swingOut">0%</output>
-          </label>
+          <div class="composer-options">
+            <div class="option-group" aria-label="Time signature">
+              <span>Time</span>
+              <button class="button small time-button active" data-time="4" type="button">4/4</button>
+              <button class="button small time-button" data-time="3" type="button">3/4</button>
+            </div>
+            <div class="option-group">
+              <button id="endMarkerBtn" class="button small" type="button">🏁 Set end</button>
+              <span id="endMarkerReadout">End: beat 96</span>
+            </div>
+          </div>
         </div>
 
         <div class="instrument-card card">
           <div class="section-title-row">
             <div>
-              <h3>Emoji Instruments</h3>
-              <p>Pick a sound, then tap cells to place notes.</p>
+              <h3>15 Emoji Instruments</h3>
+              <p>Choose a sound and place it on B3–G5. A beat can hold up to three notes.</p>
             </div>
             <button id="auditionBtn" class="button small" type="button">🔊 Test sound</button>
           </div>
           <div id="instrumentBank" class="instrument-bank"></div>
         </div>
 
+        <div class="composer-demo card">
+          <div>
+            <strong>Demo songs</strong>
+            <span>Original Emojiro examples</span>
+          </div>
+          <div class="demo-buttons">
+            <button class="button small demo-song" data-demo="1" type="button">✨ Sparkle Walk</button>
+            <button class="button small demo-song" data-demo="2" type="button">🐾 Pet Parade</button>
+            <button class="button small demo-song" data-demo="3" type="button">🚀 Moon Hop</button>
+          </div>
+        </div>
+
         <div class="sequencer-card card">
-          <div class="sequencer-scroll">
-            <div id="sequencer" class="sequencer" role="grid" aria-label="32-step music sequencer"></div>
+          <div class="playhead-strip" aria-hidden="true">
+            <span id="runner">🎨</span>
+          </div>
+          <div id="endMarkerHelp" class="end-marker-help" hidden>Tap a beat number to place the end marker.</div>
+          <div class="sequencer-scroll" id="sequencerScroll">
+            <div id="sequencer" class="sequencer" role="grid" aria-label="96-beat emoji music composer"></div>
           </div>
           <div class="music-hint">
-            <span>Tap an occupied cell to replace it with the selected emoji.</span>
-            <span>Tap the same emoji again to erase it.</span>
+            <span>Tap a filled cell with the same selected emoji to erase it.</span>
+            <span id="layerCountHint">Up to 3 simultaneous notes per beat.</span>
           </div>
         </div>
 
@@ -177,19 +200,19 @@
           <div class="about-grid">
             <div>
               <h3>Made for phones</h3>
-              <p>Large touch targets, swipe-safe drawing, horizontally scrollable music grid, and local saves.</p>
+              <p>Large touch targets, swipe-safe drawing, horizontally scrollable music staff, and local saves.</p>
             </div>
             <div>
-              <h3>No samples required</h3>
-              <p>The music engine synthesizes its sounds in the browser with Web Audio, so the app can remain lightweight.</p>
+              <h3>15 synthesized instruments</h3>
+              <p>The composer uses emoji as musical stamps while Web Audio generates the sound in the browser.</p>
             </div>
             <div>
               <h3>Portable projects</h3>
-              <p>Artwork lives in the browser, music can be exported as JSON, and paintings can be exported as PNG files.</p>
+              <p>Artwork lives in the browser, songs export as JSON, and paintings export as PNG files.</p>
             </div>
             <div>
               <h3>Original presentation</h3>
-              <p>Emojiro Paint borrows the spirit of classic console creativity software without using Nintendo art or audio assets.</p>
+              <p>Emojiro Paint recreates the creative-workstation idea with original interface code and audio synthesis rather than Nintendo art or sound assets.</p>
             </div>
           </div>
         </div>
