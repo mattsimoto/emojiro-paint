@@ -84,7 +84,37 @@
       .replace(/^-+|-+$/g, "") || "emojiro-song";
   }
 
-  $$(".mode-tab").forEach((button) => {
+  function encodeBase64Url(text) {
+    const bytes = new TextEncoder().encode(text);
+    let binary = "";
+    for (let i = 0; i < bytes.length; i += 1) binary += String.fromCharCode(bytes[i]);
+    return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+  }
+
+  function decodeBase64Url(value) {
+    const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized + "=".repeat((4 - normalized.length % 4) % 4);
+    const binary = atob(padded);
+    const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+    return new TextDecoder().decode(bytes);
+  }
+
+  async function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+      return;
+    }
+    const area = document.createElement("textarea");
+    area.value = text;
+    area.style.position = "fixed";
+    area.style.opacity = "0";
+    document.body.appendChild(area);
+    area.select();
+    document.execCommand("copy");
+    area.remove();
+  }
+
+  $(".mode-tab").forEach((button) => {
     button.addEventListener("click", () => {
       $$(".mode-tab").forEach((tab) => tab.classList.toggle("active", tab === button));
       $$(".panel").forEach((panel) => panel.classList.toggle("active", panel.id === button.dataset.panel));
@@ -186,6 +216,50 @@
           targetCtx.fillText(cell.emoji, x * cellWidth + cellWidth / 2, y * cellHeight + cellHeight / 2 + 1);
         }
       }
+    }
+  }
+
+  function videoPresetDimensions() {
+    return VIDEO_PRESETS[videoPreset] || VIDEO_PRESETS.landscape;
+  }
+
+  function drawFrameToVideoContext(targetCtx, frame, width, height) {
+    targetCtx.clearRect(0, 0, width, height);
+    targetCtx.fillStyle = "#f6ead4";
+    targetCtx.fillRect(0, 0, width, height);
+
+    const source = document.createElement("canvas");
+    source.width = 640;
+    source.height = 480;
+    drawFrameToContext(source.getContext("2d"), frame, source.width, source.height);
+
+    const safeWidth = width * .92;
+    const safeHeight = height * .82;
+    const scale = Math.min(safeWidth / source.width, safeHeight / source.height);
+    const drawWidth = source.width * scale;
+    const drawHeight = source.height * scale;
+    const x = (width - drawWidth) / 2;
+    const y = (height - drawHeight) / 2;
+
+    targetCtx.save();
+    targetCtx.shadowColor = "rgba(45,42,50,.22)";
+    targetCtx.shadowBlur = Math.max(8, Math.round(Math.min(width, height) * .018));
+    targetCtx.shadowOffsetY = Math.max(4, Math.round(Math.min(width, height) * .008));
+    targetCtx.drawImage(source, x, y, drawWidth, drawHeight);
+    targetCtx.restore();
+
+    const margin = Math.min(width, height) * .025;
+    targetCtx.fillStyle = "#2d2a32";
+    targetCtx.textBaseline = "top";
+    targetCtx.font = "900 " + Math.max(15, Math.round(Math.min(width, height) * .026)) + "px system-ui, sans-serif";
+    targetCtx.fillText("Emojiro Paint", margin, margin);
+
+    const songName = ($("#songName") && $("#songName").value) || "";
+    if (songName) {
+      targetCtx.textAlign = "right";
+      targetCtx.font = "800 " + Math.max(12, Math.round(Math.min(width, height) * .019)) + "px system-ui, sans-serif";
+      targetCtx.fillText(songName.slice(0, 40), width - margin, margin);
+      targetCtx.textAlign = "left";
     }
   }
 
@@ -1108,6 +1182,37 @@
   let playbackEndStep = SEQ_STEPS;
   let composerZoom = 38;
   let composerCompact = false;
+  let scaleAssist = "all";
+  let notePaintMode = false;
+  let notePaintDragging = false;
+  let notePaintPointerId = null;
+  let notePaintAction = "paint";
+  let notePaintLastKey = "";
+  let suppressNotePaintClick = false;
+  let videoPreset = "landscape";
+  const VIDEO_PRESETS = {
+    landscape: { width: 1280, height: 720, label: "16:9" },
+    square: { width: 720, height: 720, label: "1:1" },
+    portrait: { width: 720, height: 1280, label: "9:16" },
+    canvas: { width: 640, height: 480, label: "4:3" }
+  };
+  const SCALE_GUIDES = {
+    all: ["A","B","C","D","E","F","G"],
+    "c-major": ["C","D","E","F","G","A","B"],
+    "g-major": ["G","A","B","C","D","E"],
+    "f-major": ["F","G","A","C","D","E"],
+    "c-pentatonic": ["C","D","E","G","A"],
+    "e-pentatonic": ["E","G","A","B","D"]
+  };
+  const CHORD_GUIDES = {
+    "C-E-G": ["C4","E4","G4"],
+    "D-F-A": ["D4","F4","A4"],
+    "E-G-B": ["E4","G4","B4"],
+    "F-A-C": ["F4","A4","C5"],
+    "G-B-D": ["G4","B4","D5"],
+    "A-C-E": ["A4","C5","E5"],
+    "B-D-F": ["B4","D5","F5"]
+  };
   let instrumentMix = Object.fromEntries(
     INSTRUMENTS.map((instrument) => [instrument.id, {
       volume: 1, mute: false, solo: false, pan: 0, filter: 0, delay: 0
@@ -1628,6 +1733,109 @@
     $("#measureReadout").textContent = "Measure " + (Math.floor(start / timeSignature) + 1) + " · beats " + (start + 1) + "–" + end;
   }
 
+  function noteClass(note) {
+    return String(note || "").charAt(0).toUpperCase();
+  }
+
+  function refreshScaleGuide() {
+    const allowed = new Set(SCALE_GUIDES[scaleAssist] || SCALE_GUIDES.all);
+    $("#sequencer .seq-label").forEach((label) => {
+      const active = allowed.has(noteClass(label.textContent));
+      label.classList.toggle("scale-active", active && scaleAssist !== "all");
+      label.classList.toggle("scale-muted", !active);
+    });
+    $("#sequencer .seq-cell").forEach((cell) => {
+      const row = Number(cell.dataset.row);
+      const pitch = PITCHES[row];
+      cell.classList.toggle("scale-muted", !allowed.has(noteClass(pitch)));
+      cell.classList.toggle("note-paint-ready", notePaintMode);
+    });
+  }
+
+  function setSequenceCell(row, step, mode, cell = null, audition = true) {
+    if (row < 0 || row >= PITCHES.length || step < 0 || step >= songEndStep) return false;
+    const old = sequence[row][step];
+
+    if (mode === "paint") {
+      if (old !== selectedInstrument && !old && noteCountAtStep(step) >= MAX_LAYERS) return false;
+      sequence[row][step] = selectedInstrument;
+    } else if (mode === "erase") {
+      if (!old) return false;
+      sequence[row][step] = null;
+    } else {
+      sequence[row][step] = old === selectedInstrument ? null : selectedInstrument;
+    }
+
+    const target = cell || $('.seq-cell[data-row="' + row + '"][data-step="' + step + '"]');
+    const chosen = sequence[row][step];
+    if (target) {
+      const instrument = chosen ? instrumentById(chosen) : null;
+      target.textContent = instrument ? instrument.emoji : "";
+      target.setAttribute(
+        "aria-label",
+        PITCHES[row] + ", beat " + (step + 1) + (instrument ? ", " + instrument.name : ", empty")
+      );
+    }
+    if (audition && chosen) playInstrument(chosen, noteToFrequency(PITCHES[row]), .18);
+    return true;
+  }
+
+  function setupNotePaintEvents() {
+    const sequencer = $("#sequencer");
+
+    sequencer.addEventListener("pointerdown", (event) => {
+      if (!notePaintMode) return;
+      const cell = event.target.closest(".seq-cell");
+      if (!cell || !sequencer.contains(cell)) return;
+      event.preventDefault();
+
+      const row = Number(cell.dataset.row);
+      const step = Number(cell.dataset.step);
+      if (step >= songEndStep) return toast("Move the end marker later to use this beat");
+
+      notePaintDragging = true;
+      notePaintPointerId = event.pointerId;
+      notePaintLastKey = row + ":" + step;
+      notePaintAction = sequence[row][step] === selectedInstrument ? "erase" : "paint";
+      pushMusicHistory();
+      setSequenceCell(row, step, notePaintAction, cell);
+      suppressNotePaintClick = true;
+
+      if (typeof sequencer.setPointerCapture === "function") {
+        try { sequencer.setPointerCapture(event.pointerId); } catch (error) {}
+      }
+    });
+
+    sequencer.addEventListener("pointermove", (event) => {
+      if (!notePaintMode || !notePaintDragging || event.pointerId !== notePaintPointerId) return;
+      event.preventDefault();
+      const under = document.elementFromPoint(event.clientX, event.clientY);
+      const cell = under && under.closest ? under.closest(".seq-cell") : null;
+      if (!cell || !sequencer.contains(cell)) return;
+
+      const row = Number(cell.dataset.row);
+      const step = Number(cell.dataset.step);
+      const key = row + ":" + step;
+      if (key === notePaintLastKey || step >= songEndStep) return;
+      notePaintLastKey = key;
+      setSequenceCell(row, step, notePaintAction, cell, false);
+    });
+
+    const finish = (event) => {
+      if (!notePaintDragging) return;
+      notePaintDragging = false;
+      notePaintPointerId = null;
+      notePaintLastKey = "";
+      setTimeout(() => { suppressNotePaintClick = false; }, 0);
+      if (event && typeof sequencer.releasePointerCapture === "function") {
+        try { sequencer.releasePointerCapture(event.pointerId); } catch (error) {}
+      }
+    };
+
+    sequencer.addEventListener("pointerup", finish);
+    sequencer.addEventListener("pointercancel", finish);
+  }
+
   function applyComposerView() {
     const sequencer = $("#sequencer");
     sequencer.classList.toggle("compact", composerCompact);
@@ -1693,6 +1901,7 @@
         cell.setAttribute("aria-label", pitch + ", beat " + (step + 1) + (instrument ? ", " + instrument.name : ", empty"));
 
         cell.addEventListener("click", () => {
+          if (notePaintMode || suppressNotePaintClick) return;
           measureEditStep = step;
           selectedSection = Math.floor(step / SECTION_LENGTH);
           renderSectionBar();
@@ -1702,19 +1911,15 @@
             toast("Move the end marker later to use this beat");
             return;
           }
-          const old = sequence[row][step];
 
+          const old = sequence[row][step];
           if (!old && noteCountAtStep(step) >= MAX_LAYERS) {
             toast("Only 3 notes can play on one beat");
             return;
           }
 
           pushMusicHistory();
-          sequence[row][step] = old === selectedInstrument ? null : selectedInstrument;
-          const chosen = sequence[row][step];
-          cell.textContent = chosen ? instrumentById(chosen).emoji : "";
-          cell.setAttribute("aria-label", pitch + ", beat " + (step + 1) + (chosen ? ", " + instrumentById(chosen).name : ", empty"));
-          if (chosen) playInstrument(chosen, noteToFrequency(pitch), .24);
+          setSequenceCell(row, step, "toggle", cell);
         });
 
         sequencer.appendChild(cell);
@@ -1725,6 +1930,7 @@
     refreshPlayhead(true);
     refreshSectionSelection();
     refreshMeasureSelection();
+    refreshScaleGuide();
   }
 
   function refreshPlayhead(force = false) {
@@ -1927,6 +2133,36 @@
     $("#tempoReadout").textContent = event.target.value;
   });
 
+  $("#scaleAssistSelect").addEventListener("change", (event) => {
+    scaleAssist = event.target.value;
+    refreshScaleGuide();
+  });
+
+  $("#insertChordBtn").addEventListener("click", () => {
+    const notes = CHORD_GUIDES[$("#chordAssistSelect").value] || [];
+    const step = Math.max(0, Math.min(songEndStep - 1, measureEditStep));
+    if (!notes.length) return;
+
+    pushMusicHistory();
+    for (let row = 0; row < PITCHES.length; row += 1) sequence[row][step] = null;
+
+    const ac = ensureAudio();
+    const when = ac.currentTime + .02;
+    notes.forEach((note) => {
+      const row = PITCHES.indexOf(note);
+      if (row < 0) return;
+      sequence[row][step] = selectedInstrument;
+      playInstrument(selectedInstrument, noteToFrequency(note), .38, when);
+    });
+    renderSequencer();
+    toast("Chord inserted at beat " + (step + 1));
+  });
+
+  $("#notePaintToggle").addEventListener("change", (event) => {
+    notePaintMode = event.target.checked;
+    refreshScaleGuide();
+  });
+
   $("#composerZoom").addEventListener("input", (event) => {
     composerZoom = Number(event.target.value);
     applyComposerView();
@@ -2003,10 +2239,109 @@
     button.addEventListener("click", () => loadDemo(Number(button.dataset.demo)));
   });
 
+  function compactSongForShare() {
+    const placements = [];
+    sequence.forEach((row, rowIndex) => {
+      row.slice(0, songEndStep).forEach((id, step) => {
+        if (!id) return;
+        const instrumentIndex = INSTRUMENTS.findIndex((instrument) => instrument.id === id);
+        if (instrumentIndex >= 0) placements.push([rowIndex, step, instrumentIndex]);
+      });
+    });
+
+    const mixer = INSTRUMENTS.map((instrument) => {
+      const mix = instrumentMix[instrument.id] || {};
+      return [
+        Math.round((Number(mix.volume) || 0) * 100),
+        mix.mute ? 1 : 0,
+        mix.solo ? 1 : 0,
+        Math.round((Number(mix.pan) || 0) * 100),
+        Math.round((Number(mix.filter) || 0) * 100),
+        Math.round((Number(mix.delay) || 0) * 100)
+      ];
+    });
+
+    return {
+      v: 1,
+      n: ($("#songName").value || "My Emoji Song").slice(0, 40),
+      t: Number($("#tempoSlider").value),
+      m: timeSignature,
+      e: songEndStep,
+      l: loopMusic ? 1 : 0,
+      sl: sectionLoopEnabled ? 1 : 0,
+      s: sectionNames.slice(),
+      x: placements,
+      z: mixer
+    };
+  }
+
+  function songFromCompactShare(compact) {
+    if (!compact || !Array.isArray(compact.x)) throw new Error("Invalid shared song");
+    const sharedSequence = makeSequence();
+    compact.x.forEach((entry) => {
+      if (!Array.isArray(entry) || entry.length < 3) return;
+      const row = Number(entry[0]);
+      const step = Number(entry[1]);
+      const instrument = INSTRUMENTS[Number(entry[2])];
+      if (instrument && row >= 0 && row < PITCHES.length && step >= 0 && step < SEQ_STEPS) {
+        sharedSequence[row][step] = instrument.id;
+      }
+    });
+
+    const mixer = {};
+    INSTRUMENTS.forEach((instrument, index) => {
+      const saved = Array.isArray(compact.z) ? compact.z[index] : null;
+      mixer[instrument.id] = {
+        volume: saved ? Math.max(0, Math.min(1, Number(saved[0]) / 100)) : 1,
+        mute: Boolean(saved && saved[1]),
+        solo: Boolean(saved && saved[2]),
+        pan: saved ? Math.max(-1, Math.min(1, Number(saved[3]) / 100)) : 0,
+        filter: saved ? Math.max(0, Math.min(1, Number(saved[4]) / 100)) : 0,
+        delay: saved ? Math.max(0, Math.min(1, Number(saved[5]) / 100)) : 0
+      };
+    });
+
+    return {
+      format: "emojiro-paint-song",
+      version: 6,
+      name: String(compact.n || "Shared Emoji Song").slice(0, 40),
+      tempo: Math.max(40, Math.min(480, Number(compact.t) || 120)),
+      timeSignature: Number(compact.m) === 3 ? 3 : 4,
+      endStep: Math.max(1, Math.min(SEQ_STEPS, Number(compact.e) || SEQ_STEPS)),
+      loop: compact.l !== 0,
+      sectionLoop: Boolean(compact.sl),
+      sections: Array.isArray(compact.s) ? compact.s.slice(0, SECTION_COUNT) : undefined,
+      steps: SEQ_STEPS,
+      mixer,
+      sequence: sharedSequence
+    };
+  }
+
+  function sharedSongUrl() {
+    const encoded = encodeBase64Url(JSON.stringify(compactSongForShare()));
+    const url = new URL(location.href);
+    url.hash = "song=" + encoded;
+    return url.toString();
+  }
+
+  function loadSongFromHash() {
+    if (!location.hash.startsWith("#song=")) return false;
+    try {
+      const encoded = location.hash.slice(6);
+      const compact = JSON.parse(decodeBase64Url(encoded));
+      applySong(songFromCompactShare(compact));
+      toast("Shared song loaded");
+      return true;
+    } catch (error) {
+      toast("Shared song link could not be loaded");
+      return false;
+    }
+  }
+
   function songPayload() {
     return {
       format: "emojiro-paint-song",
-      version: 5,
+      version: 6,
       name: $("#songName").value || "My Emoji Song",
       tempo: Number($("#tempoSlider").value),
       timeSignature,
@@ -2017,7 +2352,13 @@
       maxLayersPerBeat: MAX_LAYERS,
       sections: sectionNames.slice(),
       sectionLoop: sectionLoopEnabled,
-      view: { zoom: composerZoom, compact: composerCompact },
+      view: {
+        zoom: composerZoom,
+        compact: composerCompact,
+        scaleAssist,
+        notePaintMode,
+        videoPreset
+      },
       mixer: instrumentMix,
       sequence
     };
@@ -2076,6 +2417,12 @@
     $("#loopSectionBtn").setAttribute("aria-pressed", String(sectionLoopEnabled));
     composerZoom = song.view ? Math.max(28, Math.min(58, Number(song.view.zoom) || 38)) : 38;
     composerCompact = Boolean(song.view && song.view.compact);
+    scaleAssist = song.view && SCALE_GUIDES[song.view.scaleAssist] ? song.view.scaleAssist : "all";
+    notePaintMode = Boolean(song.view && song.view.notePaintMode);
+    videoPreset = song.view && VIDEO_PRESETS[song.view.videoPreset] ? song.view.videoPreset : "landscape";
+    $("#scaleAssistSelect").value = scaleAssist;
+    $("#notePaintToggle").checked = notePaintMode;
+    $("#videoPresetSelect").value = videoPreset;
     $("#tempoOut").textContent = $("#tempoSlider").value + " BPM";
     $("#tempoReadout").textContent = $("#tempoSlider").value;
     applyComposerView();
@@ -2362,6 +2709,16 @@
     }
   });
 
+  $("#shareSongBtn").addEventListener("click", async () => {
+    try {
+      const url = sharedSongUrl();
+      await copyText(url);
+      toast("Shareable song link copied");
+    } catch (error) {
+      toast("Song link could not be copied");
+    }
+  });
+
   $("#saveSongBtn").addEventListener("click", () => {
     localStorage.setItem(SONG_KEY, JSON.stringify(songPayload()));
     toast("Song saved on this device");
@@ -2553,9 +2910,10 @@
       throw new Error("WebM export is not supported in this browser");
     }
 
+    const preset = videoPresetDimensions();
     const exportCanvas = document.createElement("canvas");
-    exportCanvas.width = 640;
-    exportCanvas.height = 480;
+    exportCanvas.width = preset.width;
+    exportCanvas.height = preset.height;
     const exportCtx = exportCanvas.getContext("2d");
     const stream = exportCanvas.captureStream(30);
     const types = ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"];
@@ -2571,7 +2929,7 @@
     recorder.start();
 
     for (let i = 0; i < frames.length; i += 1) {
-      drawFrameToContext(exportCtx, frames[i], exportCanvas.width, exportCanvas.height);
+      drawFrameToVideoContext(exportCtx, frames[i], exportCanvas.width, exportCanvas.height);
       await new Promise((resolve) => setTimeout(resolve, animationFrameDurationMs(i)));
     }
 
@@ -2582,7 +2940,7 @@
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "emojiro-animation.webm";
+    a.download = "emojiro-animation-" + videoPreset + ".webm";
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
@@ -2599,9 +2957,10 @@
     captureDestination = ac.createMediaStreamDestination();
     suppressLiveOutput = true;
 
+    const preset = videoPresetDimensions();
     const exportCanvas = document.createElement("canvas");
-    exportCanvas.width = 640;
-    exportCanvas.height = 480;
+    exportCanvas.width = preset.width;
+    exportCanvas.height = preset.height;
     const exportCtx = exportCanvas.getContext("2d");
     const videoStream = exportCanvas.captureStream(30);
     const combined = new MediaStream([
@@ -2636,7 +2995,7 @@
 
       for (let step = 0; step < songEndStep; step += 1) {
         const frameIndex = animationFrameForBeat(step);
-        drawFrameToContext(exportCtx, frames[frameIndex] || frames[0], exportCanvas.width, exportCanvas.height);
+        drawFrameToVideoContext(exportCtx, frames[frameIndex] || frames[0], exportCanvas.width, exportCanvas.height);
 
         const when = ac.currentTime + .015;
         PITCHES.forEach((pitch, row) => {
@@ -2655,7 +3014,7 @@
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = safeFilename($("#songName").value || "emojiro-music-video") + "." + extension;
+      a.download = safeFilename($("#songName").value || "emojiro-music-video") + "-" + videoPreset + "." + extension;
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 1200);
     } finally {
@@ -2677,6 +3036,10 @@
     } finally {
       $("#exportMusicVideoBtn").disabled = false;
     }
+  });
+
+  $("#videoPresetSelect").addEventListener("change", (event) => {
+    videoPreset = VIDEO_PRESETS[event.target.value] ? event.target.value : "landscape";
   });
 
   $("#exportGifBtn").addEventListener("click", async () => {
@@ -2712,7 +3075,7 @@
   function projectPayload() {
     return {
       format: "emojiro-paint-project",
-      version: 5,
+      version: 6,
       name: ($("#projectNameInput").value || "Untitled Emojiro Project").trim().slice(0, 40),
       savedAt: new Date().toISOString(),
       paint: {
@@ -2819,7 +3182,7 @@
     );
     return {
       format: "emojiro-paint-project",
-      version: 5,
+      version: 6,
       name: "Untitled Emojiro Project",
       savedAt: new Date().toISOString(),
       paint: {
@@ -2837,7 +3200,7 @@
       },
       music: {
         format: "emojiro-paint-song",
-        version: 5,
+        version: 6,
         name: "My Emoji Song",
         tempo: 120,
         timeSignature: 4,
@@ -2848,7 +3211,13 @@
         maxLayersPerBeat: MAX_LAYERS,
         sections: ["Section A", "Section B", "Section C", "Section D"],
         sectionLoop: false,
-        view: { zoom: 38, compact: false },
+        view: {
+          zoom: 38,
+          compact: false,
+          scaleAssist: "all",
+          notePaintMode: false,
+          videoPreset: "landscape"
+        },
         mixer: mix,
         sequence: makeSequence()
       }
@@ -3103,6 +3472,10 @@
   // Init
   // -----------------------------
 
+  setupNotePaintEvents();
+  $("#scaleAssistSelect").value = scaleAssist;
+  $("#notePaintToggle").checked = notePaintMode;
+  $("#videoPresetSelect").value = videoPreset;
   renderPaintPalettes();
   renderCustomStampPalette();
   renderStampEditor();
@@ -3121,7 +3494,8 @@
   updateComposerButtons();
   renderSequencer();
 
-  const recovered = recoverAutosave();
+  const sharedSongLoaded = loadSongFromHash();
+  const recovered = sharedSongLoaded ? false : recoverAutosave();
   if (!recovered) saveAutosave(true);
   setInterval(() => saveAutosave(), 7000);
   window.addEventListener("pagehide", () => saveAutosave(true));
