@@ -1,0 +1,250 @@
+
+/* Paint Studio milestone 2 */
+
+.custom-stamp-row {
+  margin-top: 9px;
+  display: grid;
+  gap: 8px;
+}
+
+.custom-stamp-palette {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  min-height: 44px;
+  padding: 2px 2px 5px;
+}
+
+.custom-stamp-button {
+  position: relative;
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  padding: 3px;
+  border: 2px solid var(--ink);
+  border-radius: 9px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.custom-stamp-button.active {
+  background: var(--yellow);
+  outline: 3px solid var(--orange);
+  outline-offset: 1px;
+}
+
+.custom-stamp-preview {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 4px;
+  background:
+    linear-gradient(45deg, #eee 25%, transparent 25%, transparent 75%, #eee 75%),
+    linear-gradient(45deg, #eee 25%, #fff 25%, #fff 75%, #eee 75%);
+  background-size: 8px 8px;
+  background-position: 0 0, 4px 4px;
+}
+
+.custom-stamp-preview i {
+  display: block;
+  min-width: 0;
+  min-height: 0;
+}
+
+.animation-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+  margin-top: 10px;
+}
+
+.check-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.check-row input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--orange-dark);
+}
+
+.stamp-dialog {
+  width: min(760px, calc(100vw - 24px));
+  padding: 0;
+  border: 0;
+  background: transparent;
+  overflow: visible;
+}
+
+.stamp-dialog::backdrop {
+  background: rgba(45, 42, 50, .58);
+  backdrop-filter: blur(3px);
+}
+
+.stamp-maker {
+  padding: 18px;
+  background: var(--panel);
+  max-height: min(86vh, 760px);
+  overflow: auto;
+}
+
+.stamp-maker-head,
+.stamp-maker-layout,
+.stamp-maker-buttons {
+  display: flex;
+  gap: 14px;
+}
+
+.stamp-maker-head {
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 15px;
+}
+
+.stamp-maker-head h2 {
+  margin-bottom: 3px;
+}
+
+.stamp-maker-head p,
+.stamp-help {
+  margin-bottom: 0;
+  color: var(--muted);
+}
+
+.stamp-maker-layout {
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.stamp-maker-layout > div:first-child {
+  flex: 0 0 min(420px, 55vw);
+}
+
+.stamp-editor-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  width: min(420px, 55vw);
+  aspect-ratio: 1;
+  border: 3px solid var(--ink);
+  border-radius: 12px;
+  overflow: hidden;
+  background:
+    linear-gradient(45deg, #eee 25%, transparent 25%, transparent 75%, #eee 75%),
+    linear-gradient(45deg, #eee 25%, #fff 25%, #fff 75%, #eee 75%);
+  background-size: 28px 28px;
+  background-position: 0 0, 14px 14px;
+  touch-action: none;
+}
+
+.stamp-pixel {
+  appearance: none;
+  padding: 0;
+  border: 0;
+  border-right: 1px solid rgba(45,42,50,.22);
+  border-bottom: 1px solid rgba(45,42,50,.22);
+  background: transparent;
+  cursor: crosshair;
+}
+
+.stamp-pixel.filled {
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.12);
+}
+
+.stamp-help {
+  margin-top: 7px;
+  font-size: 12px;
+}
+
+.stamp-maker-controls {
+  flex: 1;
+  min-width: 190px;
+}
+
+.stamp-maker-controls h3 {
+  margin-bottom: 8px;
+}
+
+.stamp-maker-controls label {
+  display: grid;
+  gap: 5px;
+  margin-top: 15px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.stamp-maker-controls input[type="text"] {
+  width: 100%;
+  padding: 9px 10px;
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.stamp-maker-buttons {
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.onion-indicator {
+  position: absolute;
+  right: 14px;
+  top: 14px;
+  z-index: 3;
+  padding: 5px 8px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: rgba(255,255,255,.86);
+  font-size: 11px;
+  font-weight: 900;
+  pointer-events: none;
+}
+
+.canvas-frame {
+  position: relative;
+}
+
+@media (max-width: 700px) {
+  .stamp-maker-layout {
+    flex-direction: column;
+  }
+
+  .stamp-maker-layout > div:first-child,
+  .stamp-editor-grid {
+    width: min(100%, 430px);
+    flex-basis: auto;
+  }
+
+  .stamp-maker-controls {
+    width: 100%;
+  }
+
+  .animation-options {
+    flex-direction: column;
+    gap: 8px;
+  }
+}
+
+@media (max-width: 430px) {
+  .stamp-maker {
+    padding: 12px;
+  }
+
+  .stamp-maker-head {
+    gap: 8px;
+  }
+
+  .stamp-maker-head p {
+    font-size: 12px;
+  }
+
+  .stamp-editor-grid {
+    width: 100%;
+  }
+}
