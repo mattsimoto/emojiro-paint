@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#f2a65a" />
+  <meta name="description" content="Emojiro Paint — draw, stamp, animate, and compose music with emoji." />
+  <title>Emojiro Paint</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand" aria-label="Emojiro Paint">
+        <span class="brand-mark" aria-hidden="true">🎨</span>
+        <div>
+          <h1>Emojiro Paint</h1>
+          <p>draw it • stamp it • play it</p>
+        </div>
+      </div>
+      <div class="top-actions">
+        <button id="saveProjectBtn" class="button small" type="button">💾 Save</button>
+        <button id="loadProjectBtn" class="button small" type="button">📂 Load</button>
+      </div>
+    </header>
+
+    <nav class="mode-tabs" aria-label="Main modes">
+      <button class="mode-tab active" data-panel="paintPanel" type="button">🎨 Paint Studio</button>
+      <button class="mode-tab" data-panel="musicPanel" type="button">🎵 Music Maker</button>
+      <button class="mode-tab" data-panel="aboutPanel" type="button">📼 About</button>
+    </nav>
+
+    <main>
+      <section id="paintPanel" class="panel active" aria-labelledby="paintTitle">
+        <div class="panel-heading">
+          <div>
+            <h2 id="paintTitle">Paint Studio</h2>
+            <p>Pixel paint plus emoji stamps. Mouse, pen, and touch all work.</p>
+          </div>
+          <div class="status-pill" id="paintStatus">32 × 24 canvas</div>
+        </div>
+
+        <div class="paint-layout">
+          <aside class="toolbox card">
+            <h3>Tools</h3>
+            <div class="tool-grid" id="paintTools">
+              <button class="tool-button active" data-tool="pencil" type="button"><span>✏️</span>Pencil</button>
+              <button class="tool-button" data-tool="stamp" type="button"><span>😀</span>Stamp</button>
+              <button class="tool-button" data-tool="eraser" type="button"><span>🧽</span>Eraser</button>
+              <button class="tool-button" data-tool="fill" type="button"><span>🪣</span>Fill</button>
+              <button class="tool-button" data-tool="line" type="button"><span>📏</span>Line</button>
+              <button class="tool-button" data-tool="rect" type="button"><span>⬜</span>Box</button>
+            </div>
+
+            <h3>Ink</h3>
+            <div id="colorPalette" class="color-palette" aria-label="Color palette"></div>
+
+            <h3>Stamps</h3>
+            <div id="stampPalette" class="stamp-palette" aria-label="Emoji stamp palette"></div>
+
+            <div class="stacked-actions">
+              <button id="undoBtn" class="button" type="button">↶ Undo</button>
+              <button id="redoBtn" class="button" type="button">↷ Redo</button>
+              <button id="clearCanvasBtn" class="button danger" type="button">🗑️ Clear</button>
+              <button id="exportCanvasBtn" class="button primary" type="button">⬇️ Export PNG</button>
+            </div>
+          </aside>
+
+          <div class="canvas-column">
+            <div class="canvas-frame card">
+              <canvas id="paintCanvas" width="640" height="480" aria-label="Emojiro Paint canvas"></canvas>
+            </div>
+
+            <div class="frame-strip card">
+              <div class="frame-strip-head">
+                <div>
+                  <h3>Animation Frames</h3>
+                  <p>Make simple flipbook loops from your artwork.</p>
+                </div>
+                <div class="frame-actions">
+                  <button id="addFrameBtn" class="button small" type="button">＋ Frame</button>
+                  <button id="duplicateFrameBtn" class="button small" type="button">⧉ Duplicate</button>
+                  <button id="deleteFrameBtn" class="button small danger" type="button">− Delete</button>
+                  <button id="playFramesBtn" class="button small primary" type="button">▶ Preview</button>
+                </div>
+              </div>
+              <div id="frameList" class="frame-list" aria-label="Animation frames"></div>
+              <label class="range-row">
+                <span>Frame speed</span>
+                <input id="frameSpeed" type="range" min="1" max="12" value="4" />
+                <output id="frameSpeedOut">4 fps</output>
+              </label>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="musicPanel" class="panel" aria-labelledby="musicTitle">
+        <div class="panel-heading">
+          <div>
+            <h2 id="musicTitle">Music Maker</h2>
+            <p>Place emoji notes on the grid. Every emoji is a playable instrument.</p>
+          </div>
+          <div class="status-pill"><span id="tempoReadout">120</span> BPM</div>
+        </div>
+
+        <div class="music-toolbar card">
+          <div class="transport">
+            <button id="playMusicBtn" class="button primary transport-button" type="button">▶ Play</button>
+            <button id="stopMusicBtn" class="button transport-button" type="button">■ Stop</button>
+            <button id="randomMusicBtn" class="button" type="button">🎲 Remix</button>
+            <button id="clearMusicBtn" class="button danger" type="button">🗑️ Clear</button>
+          </div>
+
+          <label class="range-row tempo-row">
+            <span>Tempo</span>
+            <input id="tempoSlider" type="range" min="60" max="220" value="120" />
+            <output id="tempoOut">120 BPM</output>
+          </label>
+
+          <label class="range-row">
+            <span>Swing</span>
+            <input id="swingSlider" type="range" min="0" max="45" value="0" />
+            <output id="swingOut">0%</output>
+          </label>
+        </div>
+
+        <div class="instrument-card card">
+          <div class="section-title-row">
+            <div>
+              <h3>Emoji Instruments</h3>
+              <p>Pick a sound, then tap cells to place notes.</p>
+            </div>
+            <button id="auditionBtn" class="button small" type="button">🔊 Test sound</button>
+          </div>
+          <div id="instrumentBank" class="instrument-bank"></div>
+        </div>
+
+        <div class="sequencer-card card">
+          <div class="sequencer-scroll">
+            <div id="sequencer" class="sequencer" role="grid" aria-label="32-step music sequencer"></div>
+          </div>
+          <div class="music-hint">
+            <span>Tap an occupied cell to replace it with the selected emoji.</span>
+            <span>Tap the same emoji again to erase it.</span>
+          </div>
+        </div>
+
+        <div class="song-actions card">
+          <label>
+            Song name
+            <input id="songName" type="text" maxlength="40" value="My Emoji Song" />
+          </label>
+          <div class="song-action-buttons">
+            <button id="saveSongBtn" class="button" type="button">💾 Save song</button>
+            <button id="loadSongBtn" class="button" type="button">📂 Load song</button>
+            <button id="exportSongBtn" class="button primary" type="button">⬇️ Export JSON</button>
+            <label class="button file-button">
+              ⬆️ Import JSON
+              <input id="importSongInput" type="file" accept=".json,application/json" />
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <section id="aboutPanel" class="panel" aria-labelledby="aboutTitle">
+        <div class="about-card card">
+          <div class="about-hero">
+            <div class="about-icon">🎨🎵</div>
+            <div>
+              <h2 id="aboutTitle">Emojiro Paint</h2>
+              <p>A playful paint, animation, and music toy built around Unicode emoji.</p>
+            </div>
+          </div>
+          <div class="about-grid">
+            <div>
+              <h3>Made for phones</h3>
+              <p>Large touch targets, swipe-safe drawing, horizontally scrollable music grid, and local saves.</p>
+            </div>
+            <div>
+              <h3>No samples required</h3>
+              <p>The music engine synthesizes its sounds in the browser with Web Audio, so the app can remain lightweight.</p>
+            </div>
+            <div>
+              <h3>Portable projects</h3>
+              <p>Artwork lives in the browser, music can be exported as JSON, and paintings can be exported as PNG files.</p>
+            </div>
+            <div>
+              <h3>Original presentation</h3>
+              <p>Emojiro Paint borrows the spirit of classic console creativity software without using Nintendo art or audio assets.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
