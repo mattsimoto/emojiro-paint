@@ -42,11 +42,13 @@ Emojiro Paint is a touch-friendly browser creativity toy inspired by classic con
 - Placeable end marker
 - Looping and music undo
 - Measure selection plus copy, paste, and clear
-- Per-instrument volume and mute mixer
+- Four 24-beat song sections with rename, copy/paste, duplicate, clear, and reorder controls
+- Per-instrument volume, mute, solo, and stereo pan mixer
 - Three original demo songs
 - Song save/load in local storage
 - JSON song import/export
 - Standard MIDI file export
+- Offline-rendered stereo WAV export
 
 ### 💾 Project storage
 
@@ -94,7 +96,7 @@ Use the frame strip to add, duplicate, delete, reorder, or select frames. **Onio
 
 ### Music
 
-Choose an emoji instrument, then place it on the staff. Each beat supports up to three simultaneous notes. Selecting the same instrument in the same cell removes it. Tap any beat to select its measure, then copy, paste, or clear the measure. The mixer controls each emoji instrument independently. Press **Space** to play or stop while Music Maker is active.
+Choose an emoji instrument, then place it on the staff. Each beat supports up to three simultaneous notes. Selecting the same instrument in the same cell removes it. Tap any beat to select its measure, then copy, paste, or clear the measure. The 96-beat song is also organized into four editable 24-beat sections that can be renamed, duplicated, moved, copied, pasted, or cleared. The mixer controls volume, mute, solo, and stereo pan for each emoji instrument. Press **Space** to play or stop while Music Maker is active.
 
 ## Architecture
 
@@ -111,10 +113,10 @@ The project intentionally remains plain HTML, CSS, and JavaScript:
 
 ## Next milestones
 
-- WAV/audio recording export
-- Song sections and section duplication
-- Per-instrument solo and pan
 - Composer zoom and compact mobile notation view
+- Section-specific playback and loop ranges
+- Track-level effects such as delay and filter
+- Combined music + animation video export
 - Autosave and named project gallery
 - Offline service worker support
 - Shareable song/project files
