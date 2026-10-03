@@ -1347,7 +1347,7 @@
   function refreshMeasureSelection() {
     const start = currentMeasureStart();
     const end = Math.min(SEQ_STEPS, start + timeSignature);
-    $("#sequencer [data-step]").forEach((el) => {
+    $$("#sequencer [data-step]").forEach((el) => {
       const step = Number(el.dataset.step);
       el.classList.toggle("edit-measure", step >= start && step < end);
     });
