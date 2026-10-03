@@ -295,6 +295,36 @@
           <label class="check-row"><input id="notePaintToggle" type="checkbox" /> Drag to paint notes</label>
         </div>
 
+        <div class="performance-tools card">
+          <div class="progression-tools">
+            <div>
+              <strong>Chord progression</strong>
+              <span>Fill the selected 24-beat section with a repeating natural-note progression.</span>
+            </div>
+            <select id="progressionSelect" aria-label="Chord progression">
+              <option value="I-V-vi-IV">I–V–vi–IV</option>
+              <option value="I-IV-V-I">I–IV–V–I</option>
+              <option value="vi-IV-I-V">vi–IV–I–V</option>
+              <option value="ii-V-I-I">ii–V–I–I</option>
+            </select>
+            <select id="progressionStyleSelect" aria-label="Chord progression style">
+              <option value="block">Block chords</option>
+              <option value="up">Arpeggio up</option>
+              <option value="down">Arpeggio down</option>
+            </select>
+            <button id="fillProgressionBtn" class="button small primary" type="button">🎶 Fill section</button>
+          </div>
+
+          <div class="live-record-head">
+            <div>
+              <strong>Live Keys</strong>
+              <span>Play the selected emoji instrument. Record snaps notes to the current beat.</span>
+            </div>
+            <button id="liveRecordBtn" class="button small toggle-button" type="button" aria-pressed="false">⏺ Record off</button>
+          </div>
+          <div id="liveKeyboard" class="live-keyboard" aria-label="Live note keyboard"></div>
+        </div>
+
         <div class="composer-view card">
           <label class="range-row">
             <span>Zoom</span>
