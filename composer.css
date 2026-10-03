@@ -459,3 +459,99 @@
     grid-column: 1 / -1;
   }
 }
+
+
+.composer-view {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+  padding: 10px 14px;
+}
+
+.composer-view .range-row {
+  flex: 1 1 300px;
+  margin: 0;
+}
+
+.composer-view .check-row {
+  flex: 0 0 auto;
+}
+
+.instrument-mixer {
+  grid-template-columns: repeat(2, minmax(300px, 1fr));
+}
+
+.mixer-channel {
+  grid-template-columns: minmax(110px, 1.1fr) minmax(90px, .8fr) minmax(90px, .8fr);
+  align-items: start;
+}
+
+.mixer-channel .mixer-buttons {
+  grid-column: 1 / -1;
+}
+
+.mixer-effect-row {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.mixer-effect {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 6px;
+  align-items: center;
+  padding-top: 4px;
+  border-top: 1px dashed rgba(45,42,50,.2);
+  font-size: 9px;
+  font-weight: 900;
+}
+
+.mixer-effect input {
+  min-width: 70px;
+}
+
+.sequencer.compact {
+  --cell: 30px !important;
+  grid-template-columns: 52px repeat(96, var(--cell)) !important;
+}
+
+.sequencer.compact .seq-label {
+  width: 52px;
+  font-size: 10px;
+}
+
+.sequencer.compact .seq-cell {
+  font-size: 17px;
+}
+
+.sequencer.compact .seq-step {
+  font-size: 9px;
+}
+
+.section-actions .toggle-button.active {
+  background: var(--yellow);
+  outline: 2px solid var(--orange);
+  outline-offset: 1px;
+}
+
+@media (max-width: 760px) {
+  .composer-view {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .composer-view .range-row {
+    flex-basis: auto;
+  }
+
+  .instrument-mixer {
+    grid-template-columns: 1fr;
+  }
+
+  .mixer-effect-row {
+    grid-template-columns: 1fr;
+  }
+}
