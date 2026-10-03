@@ -635,3 +635,13 @@
     padding-bottom: 0;
   }
 }
+
+
+.sequencer.note-paint-mode {
+  touch-action: none;
+  user-select: none;
+}
+
+.sequencer.note-paint-mode .seq-cell {
+  cursor: cell;
+}
