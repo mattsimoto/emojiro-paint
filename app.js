@@ -301,7 +301,7 @@
   }
 
   function syncToolButtons() {
-    $("#paintTools .tool-button").forEach((button) => {
+    $$("#paintTools .tool-button").forEach((button) => {
       button.classList.toggle("active", button.dataset.tool === activeTool);
     });
   }
