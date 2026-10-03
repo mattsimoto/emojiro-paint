@@ -45,13 +45,18 @@ Emojiro Paint is a touch-friendly browser creativity toy inspired by classic con
 - Four 24-beat song sections with rename, copy/paste, duplicate, clear, and reorder controls
 - Section-only playback with optional section looping
 - Composer zoom plus compact notation mode for small screens
+- Scale guides for natural-note composition
+- One-tap natural-note triad insertion using the selected emoji instrument
+- Optional drag-to-paint note entry for mouse, pen, and touch
 - Per-instrument volume, mute, solo, stereo pan, tone filter, and echo controls
 - Three original demo songs
 - Song save/load in local storage
 - JSON song import/export
+- Shareable URL-encoded song links that load directly from the page hash
 - Standard MIDI file export
 - Offline-rendered stereo WAV export with mixer effects
 - Combined animation + soundtrack video export using browser MediaRecorder
+- Video export presets for 16:9 landscape, 1:1 square, 9:16 portrait, and the native 4:3 canvas
 
 ### 💾 Project storage
 
@@ -105,7 +110,7 @@ Use the frame strip to add, duplicate, delete, reorder, or select frames. **Onio
 
 ### Music
 
-Choose an emoji instrument, then place it on the staff. Each beat supports up to three simultaneous notes. Selecting the same instrument in the same cell removes it. Tap any beat to select its measure, then copy, paste, or clear the measure. The 96-beat song is also organized into four editable 24-beat sections that can be renamed, duplicated, moved, copied, pasted, or cleared. The mixer controls volume, mute, solo, stereo pan, tone filtering, and echo for each emoji instrument. Sections can be auditioned independently and looped while editing. Press **Space** to play or stop while Music Maker is active.
+Choose an emoji instrument, then place it on the staff. Each beat supports up to three simultaneous notes. Selecting the same instrument in the same cell removes it. Tap any beat to select its measure, then copy, paste, or clear the measure. The 96-beat song is also organized into four editable 24-beat sections that can be renamed, duplicated, moved, copied, pasted, or cleared. The mixer controls volume, mute, solo, stereo pan, tone filtering, and echo for each emoji instrument. Sections can be auditioned independently and looped while editing. Scale guides can dim notes outside the selected natural-note scale, chord helpers insert a triad at the selected beat, and **Drag to paint notes** turns the sequencer into a touch-friendly note brush. Press **Space** to play or stop while Music Maker is active.
 
 ## Architecture
 
@@ -125,10 +130,10 @@ The project intentionally remains plain HTML, CSS, and JavaScript:
 
 ## Next milestones
 
-- Shareable URL-encoded song snippets
 - Section-level tempo or instrument overrides
-- Chord/scale helpers and note painting
-- Export presets for social-video dimensions
+- Chord progression templates and arpeggiation
+- Quantized live note recording from keyboard/touch input
+- Optional share-link compression for very dense songs
 - Cloud-sync option for project libraries
 - Original mini-games and interactive title-screen toys
 
