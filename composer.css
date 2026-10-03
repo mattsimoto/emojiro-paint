@@ -645,3 +645,115 @@
 .sequencer.note-paint-mode .seq-cell {
   cursor: cell;
 }
+
+
+.performance-tools {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+}
+
+.progression-tools {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.4fr) minmax(150px, .7fr) minmax(150px, .7fr) auto;
+  align-items: end;
+  gap: 9px;
+}
+
+.progression-tools > div:first-child,
+.live-record-head > div:first-child {
+  display: grid;
+  gap: 2px;
+}
+
+.progression-tools span,
+.live-record-head span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.progression-tools select {
+  min-height: 36px;
+  padding: 7px 9px;
+  border: 2px solid var(--ink);
+  border-radius: 9px;
+  background: #fff;
+  font-weight: 800;
+}
+
+.live-record-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 10px;
+  border-top: 2px dashed rgba(45,42,50,.18);
+}
+
+#liveRecordBtn.active {
+  background: #ffd3d3;
+  outline: 2px solid #c84e4e;
+  outline-offset: 1px;
+}
+
+.live-keyboard {
+  display: flex;
+  gap: 5px;
+  overflow-x: auto;
+  padding: 3px 2px 8px;
+  scrollbar-width: thin;
+}
+
+.live-key {
+  flex: 0 0 54px;
+  min-height: 72px;
+  padding: 8px 5px;
+  border: 2px solid var(--ink);
+  border-radius: 8px 8px 12px 12px;
+  background: #fff;
+  box-shadow: 0 3px 0 var(--ink);
+  font-weight: 900;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.live-key:active,
+.live-key.active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--ink);
+  background: var(--yellow);
+}
+
+.live-key span {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 700;
+}
+
+@media (max-width: 850px) {
+  .progression-tools {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .progression-tools > div:first-child {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 560px) {
+  .progression-tools {
+    grid-template-columns: 1fr;
+  }
+
+  .progression-tools > div:first-child {
+    grid-column: auto;
+  }
+
+  .live-record-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
