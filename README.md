@@ -97,12 +97,14 @@ Then open `http://localhost:8000`.
 
 ## GitHub Pages
 
-Because Emojiro Paint is fully static, it can be hosted directly from the repository root:
+Emojiro Paint includes a ready-to-run GitHub Pages deployment workflow.
 
 1. Open **Settings → Pages**.
-2. Under **Build and deployment**, choose **Deploy from a branch**.
-3. Select **main** and **/(root)**.
-4. Save.
+2. Under **Build and deployment → Source**, choose **GitHub Actions**.
+3. Open **Actions → Deploy Emojiro Paint to GitHub Pages**.
+4. Choose **Run workflow** on `main`.
+
+After that first deployment, the site URL will be shown in the workflow's `github-pages` deployment environment. The repository's Chromium runtime validation is separate, so app tests remain green even before Pages is enabled.
 
 ## Controls
 
