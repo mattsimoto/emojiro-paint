@@ -2206,6 +2206,7 @@
     refreshMeasureSelection();
     refreshSectionSelection();
     renderSectionBar();
+    renderPercussionGrid();
   }
 
   function renderLiveKeyboard() {
@@ -2271,6 +2272,7 @@
           measureEditStep = step;
           selectedSection = Math.floor(step / SECTION_LENGTH);
           renderSectionBar();
+          renderPercussionGrid();
           refreshSectionSelection();
           refreshMeasureSelection();
           return;
@@ -2307,6 +2309,7 @@
           measureEditStep = step;
           selectedSection = Math.floor(step / SECTION_LENGTH);
           renderSectionBar();
+          renderPercussionGrid();
           refreshSectionSelection();
           refreshMeasureSelection();
           if (step >= songEndStep) {
