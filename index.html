@@ -189,6 +189,18 @@
           </div>
         </div>
 
+        <div class="measure-editor card">
+          <div>
+            <strong>Measure editor</strong>
+            <span id="measureReadout">Measure 1</span>
+          </div>
+          <div class="measure-buttons">
+            <button id="copyMeasureBtn" class="button small" type="button">📋 Copy</button>
+            <button id="pasteMeasureBtn" class="button small" type="button" disabled>📥 Paste</button>
+            <button id="clearMeasureBtn" class="button small danger" type="button">🧽 Clear</button>
+          </div>
+        </div>
+
         <div class="instrument-card card">
           <div class="section-title-row">
             <div>
@@ -199,6 +211,12 @@
           </div>
           <div id="instrumentBank" class="instrument-bank"></div>
         </div>
+
+        <details class="mixer-card card">
+          <summary>🎚️ Instrument Mixer</summary>
+          <p>Set volume or mute individual emoji instruments. Mixer settings are saved with the song.</p>
+          <div id="instrumentMixer" class="instrument-mixer"></div>
+        </details>
 
         <div class="composer-demo card">
           <div>
@@ -234,7 +252,8 @@
           <div class="song-action-buttons">
             <button id="saveSongBtn" class="button" type="button">💾 Save song</button>
             <button id="loadSongBtn" class="button" type="button">📂 Load song</button>
-            <button id="exportSongBtn" class="button primary" type="button">⬇️ Export JSON</button>
+            <button id="exportSongBtn" class="button" type="button">⬇️ Export JSON</button>
+            <button id="exportMidiBtn" class="button primary" type="button">🎹 Export MIDI</button>
             <label class="button file-button">
               ⬆️ Import JSON
               <input id="importSongInput" type="file" accept=".json,application/json" />
