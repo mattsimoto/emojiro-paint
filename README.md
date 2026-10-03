@@ -52,7 +52,12 @@ Emojiro Paint is a touch-friendly browser creativity toy inspired by classic con
 
 ### 💾 Project storage
 
-- Save and restore the complete paint, animation, custom-stamp, and music state locally
+- Automatic session autosave and recovery
+- Quick save/load slot
+- Named on-device project library
+- Up to 8 named projects with open, delete, and individual export controls
+- Full-project JSON import/export for moving projects between devices
+- Save and restore the complete paint, animation, custom-stamp, mixer, section, and music state locally
 - No account or server is required
 
 ### 📱 Mobile support
@@ -62,6 +67,7 @@ Emojiro Paint is a touch-friendly browser creativity toy inspired by classic con
 - Horizontally scrollable music staff
 - Responsive layouts
 - Installable web-app manifest
+- Offline app-shell caching through a service worker
 
 ## Run locally
 
@@ -106,10 +112,13 @@ The project intentionally remains plain HTML, CSS, and JavaScript:
 - `styles.css` — shared responsive retro UI
 - `paint-plus.css` — custom stamp and animation UI
 - `composer.css` — expanded music composer UI
+- `project-library.css` — named project and autosave UI
 - `app.js` — painting, stamps, animation, Web Audio synthesis, sequencing, and persistence
 - `manifest.webmanifest` — installable app metadata
 - `favicon.svg` — original Emojiro icon
-- `.github/workflows/validate.yml` — basic syntax and file validation
+- `sw.js` — offline service worker
+- `tests/validate.mjs` — DOM/control smoke validation
+- `.github/workflows/validate.yml` — syntax, smoke, and required-file validation
 
 ## Next milestones
 
@@ -117,9 +126,8 @@ The project intentionally remains plain HTML, CSS, and JavaScript:
 - Section-specific playback and loop ranges
 - Track-level effects such as delay and filter
 - Combined music + animation video export
-- Autosave and named project gallery
-- Offline service worker support
-- Shareable song/project files
+- Shareable URL-encoded song snippets
+- Cloud-sync option for project libraries
 - Original mini-games and interactive title-screen toys
 
 ## Browser notes
