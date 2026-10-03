@@ -7,7 +7,7 @@
   const CELL_H = 20;
   const MAX_UNDO = 40;
   const PROJECT_KEY = "emojiro-paint-project-v1";
-  const SONG_KEY = "emojiro-paint-song-v1";
+  const SONG_KEY = "emojiro-paint-song-v2";
 
   const COLORS = [
     "#2d2a32", "#ffffff", "#e45b5b", "#f28c45", "#f7d25c", "#74b86f",
@@ -23,20 +23,26 @@
   ];
 
   const INSTRUMENTS = [
-    { id: "cat", emoji: "🐱", name: "Cat Lead", type: "square" },
-    { id: "dog", emoji: "🐶", name: "Dog Bass", type: "bass" },
-    { id: "frog", emoji: "🐸", name: "Frog Pluck", type: "pluck" },
-    { id: "bird", emoji: "🐦", name: "Bird Whistle", type: "bird" },
-    { id: "star", emoji: "⭐", name: "Star Bell", type: "bell" },
-    { id: "heart", emoji: "❤️", name: "Heart Pad", type: "pad" },
-    { id: "car", emoji: "🚗", name: "Car Beep", type: "beep" },
-    { id: "robot", emoji: "🤖", name: "Robot", type: "robot" },
-    { id: "drum", emoji: "🥁", name: "Drum", type: "drum" },
-    { id: "clap", emoji: "👏", name: "Clap", type: "clap" }
+    { id: "kalimba", emoji: "🙂", name: "Smile Keys", type: "kalimba" },
+    { id: "drum", emoji: "🍄", name: "Mushroom Drum", type: "drum" },
+    { id: "lizard", emoji: "🦎", name: "Lizard Zip", type: "lizard" },
+    { id: "star", emoji: "⭐", name: "Star Bells", type: "star" },
+    { id: "trumpet", emoji: "🌼", name: "Flower Horn", type: "trumpet" },
+    { id: "game", emoji: "🎮", name: "Game Wave", type: "game" },
+    { id: "dog", emoji: "🐶", name: "Dog Bark", type: "dog" },
+    { id: "cat", emoji: "🐱", name: "Cat Meow", type: "cat" },
+    { id: "pig", emoji: "🐷", name: "Pig Oink", type: "pig" },
+    { id: "duck", emoji: "🦆", name: "Duck Hit", type: "duck" },
+    { id: "baby", emoji: "👶", name: "Baby Hiccup", type: "baby" },
+    { id: "plane", emoji: "✈️", name: "Plane Guitar", type: "plane" },
+    { id: "ship", emoji: "🚢", name: "Ship Percussion", type: "ship" },
+    { id: "car", emoji: "🚗", name: "Car Organ", type: "car" },
+    { id: "heart", emoji: "❤️", name: "Heart Bass", type: "heart" }
   ];
 
-  const PITCHES = ["C6", "B5", "A5", "G5", "F5", "E5", "D5", "C5", "B4", "A4", "G4", "F4"];
-  const SEQ_STEPS = 32;
+  const PITCHES = ["G5", "F5", "E5", "D5", "C5", "B4", "A4", "G4", "F4", "E4", "D4", "C4", "B3"];
+  const SEQ_STEPS = 96;
+  const MAX_LAYERS = 3;
 
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
@@ -71,10 +77,6 @@
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, "") || "emojiro-song";
   }
-
-  // -----------------------------
-  // Main navigation
-  // -----------------------------
 
   $$(".mode-tab").forEach((button) => {
     button.addEventListener("click", () => {
@@ -513,15 +515,21 @@
   });
 
   // -----------------------------
-  // Music Maker
+  // Emoji Composer
   // -----------------------------
 
   let audioCtx = null;
   let selectedInstrument = INSTRUMENTS[0].id;
   let sequence = makeSequence();
   let currentStep = 0;
+  let highlightedStep = -1;
   let musicTimer = null;
   let isMusicPlaying = false;
+  let loopMusic = true;
+  let timeSignature = 4;
+  let songEndStep = SEQ_STEPS;
+  let endMarkerMode = false;
+  let musicHistory = [];
 
   function makeSequence() {
     return Array.from({ length: PITCHES.length }, () => Array(SEQ_STEPS).fill(null));
@@ -552,7 +560,7 @@
     const ac = ensureAudio();
     const gain = ac.createGain();
     gain.gain.setValueAtTime(0.0001, when);
-    gain.gain.exponentialRampToValueAtTime(gainValue, when + Math.min(.02, duration * .2));
+    gain.gain.exponentialRampToValueAtTime(gainValue, when + Math.min(.02, Math.max(.005, duration * .18)));
     gain.gain.exponentialRampToValueAtTime(0.0001, when + duration);
     gain.connect(ac.destination);
     return gain;
@@ -563,7 +571,7 @@
     const osc = ac.createOscillator();
     const gain = connectGain(gainValue, when, duration);
     osc.type = wave;
-    osc.frequency.setValueAtTime(frequency, when);
+    osc.frequency.setValueAtTime(Math.max(25, frequency), when);
     osc.detune.setValueAtTime(detune, when);
     osc.connect(gain);
     osc.start(when);
@@ -571,7 +579,7 @@
     return osc;
   }
 
-  function noiseBurst(when, duration, gainValue, highpass) {
+  function noiseBurst(when, duration, gainValue, filterType, filterFrequency) {
     const ac = ensureAudio();
     const buffer = ac.createBuffer(1, Math.max(1, Math.floor(ac.sampleRate * duration)), ac.sampleRate);
     const data = buffer.getChannelData(0);
@@ -579,10 +587,10 @@
     const src = ac.createBufferSource();
     src.buffer = buffer;
     const gain = connectGain(gainValue, when, duration);
-    if (highpass) {
+    if (filterType) {
       const filter = ac.createBiquadFilter();
-      filter.type = "highpass";
-      filter.frequency.value = highpass;
+      filter.type = filterType;
+      filter.frequency.value = filterFrequency || 1000;
       src.connect(filter);
       filter.connect(gain);
     } else {
@@ -591,58 +599,92 @@
     src.start(when);
   }
 
-  function playInstrument(id, frequency, duration = .18, when) {
+  function playInstrument(id, frequency, duration = .28, when) {
     const ac = ensureAudio();
     const start = when == null ? ac.currentTime : when;
     const instrument = instrumentById(id);
     if (!instrument) return;
 
     switch (instrument.type) {
-      case "square":
-        tone("square", frequency, start, duration, .10);
-        tone("sine", frequency * 2, start, duration * .7, .025);
-        break;
-      case "bass":
-        tone("sawtooth", frequency / 2, start, duration * 1.2, .11);
-        break;
-      case "pluck": {
-        const osc = tone("triangle", frequency * 1.15, start, duration * .65, .12);
-        osc.frequency.exponentialRampToValueAtTime(Math.max(50, frequency * .82), start + duration * .65);
+      case "kalimba": {
+        tone("triangle", frequency * 2, start, duration * .65, .075);
+        tone("sine", frequency * 4, start, duration * .42, .025);
         break;
       }
-      case "bird": {
-        const osc = tone("sine", frequency * 1.8, start, duration * .65, .075);
-        osc.frequency.exponentialRampToValueAtTime(frequency * 2.45, start + duration * .32);
-        osc.frequency.exponentialRampToValueAtTime(frequency * 1.9, start + duration * .65);
-        break;
-      }
-      case "bell":
-        tone("sine", frequency, start, duration * 1.8, .085);
-        tone("sine", frequency * 2.01, start, duration * 1.3, .045);
-        tone("sine", frequency * 3.98, start, duration, .018);
-        break;
-      case "pad":
-        tone("triangle", frequency, start, duration * 1.8, .055, -7);
-        tone("triangle", frequency, start, duration * 1.8, .055, 7);
-        break;
-      case "beep":
-        tone("square", frequency * 1.25, start, duration * .55, .07);
-        break;
-      case "robot":
-        tone("sawtooth", frequency, start, duration * .75, .065, -14);
-        tone("square", frequency / 2, start, duration * .75, .045, 14);
-        break;
       case "drum": {
-        const kick = tone("sine", Math.max(65, frequency / 4), start, .18, .18);
+        const kick = tone("sine", 125, start, .18, .18);
         kick.frequency.exponentialRampToValueAtTime(42, start + .18);
+        noiseBurst(start, .055, .04, "lowpass", 900);
         break;
       }
-      case "clap":
-        noiseBurst(start, .12, .13, 900);
-        noiseBurst(start + .035, .08, .07, 1300);
+      case "lizard": {
+        const osc = tone("square", frequency * 1.25, start, duration * .42, .055);
+        osc.frequency.exponentialRampToValueAtTime(frequency * 2.1, start + duration * .2);
+        osc.frequency.exponentialRampToValueAtTime(frequency * 1.4, start + duration * .42);
+        break;
+      }
+      case "star":
+        tone("sine", frequency * 4, start, duration * 1.4, .055);
+        tone("sine", frequency * 8.02, start, duration, .022);
+        break;
+      case "trumpet":
+        tone("sawtooth", frequency, start, duration * .82, .055);
+        tone("triangle", frequency * 2, start, duration * .72, .035);
+        break;
+      case "game":
+        tone("square", frequency, start, duration * .65, .075);
+        break;
+      case "dog": {
+        const bark = tone("sawtooth", Math.max(65, frequency / 2), start, duration * .44, .065);
+        bark.frequency.exponentialRampToValueAtTime(Math.max(45, frequency / 3), start + duration * .44);
+        noiseBurst(start, duration * .28, .035, "bandpass", 550);
+        break;
+      }
+      case "cat": {
+        const meow = tone("sawtooth", frequency, start, duration * .8, .045);
+        meow.frequency.exponentialRampToValueAtTime(frequency * 1.35, start + duration * .35);
+        meow.frequency.exponentialRampToValueAtTime(frequency * .82, start + duration * .8);
+        break;
+      }
+      case "pig": {
+        const oink = tone("square", Math.max(55, frequency * .62), start, duration * .55, .055);
+        oink.frequency.exponentialRampToValueAtTime(Math.max(42, frequency * .42), start + duration * .55);
+        noiseBurst(start, duration * .35, .028, "lowpass", 650);
+        break;
+      }
+      case "duck":
+        tone("sawtooth", frequency, start, duration * .35, .045);
+        tone("square", frequency * 2, start, duration * .25, .035);
+        tone("triangle", frequency / 2, start, duration * .42, .035);
+        break;
+      case "baby": {
+        const hic = tone("sine", frequency * 1.5, start, duration * .3, .055);
+        hic.frequency.exponentialRampToValueAtTime(frequency * 2.3, start + duration * .12);
+        hic.frequency.exponentialRampToValueAtTime(frequency * 1.45, start + duration * .3);
+        break;
+      }
+      case "plane":
+        tone("triangle", frequency / 2, start, duration * .85, .075);
+        tone("sine", frequency, start, duration * .5, .024);
+        break;
+      case "ship":
+        if (frequency < 440) {
+          tone("square", 155 + frequency * .08, start, .09, .07);
+          tone("square", 225 + frequency * .05, start + .018, .07, .04);
+        } else {
+          noiseBurst(start, .18, .075, "highpass", 3200);
+        }
+        break;
+      case "car":
+        tone("square", frequency * 2, start, duration * .8, .04, -6);
+        tone("square", frequency * 4, start, duration * .8, .026, 6);
+        break;
+      case "heart":
+        tone("sawtooth", frequency / 4, start, duration * .95, .085);
+        tone("sine", frequency / 2, start, duration * .8, .03);
         break;
       default:
-        tone("sine", frequency, start, duration, .08);
+        tone("sine", frequency, start, duration, .07);
     }
   }
 
@@ -657,25 +699,66 @@
       button.addEventListener("click", () => {
         selectedInstrument = instrument.id;
         renderInstrumentBank();
-        playInstrument(instrument.id, 440, .2);
+        playInstrument(instrument.id, 440, .22);
       });
       bank.appendChild(button);
     });
   }
 
+  function noteCountAtStep(step) {
+    let count = 0;
+    for (let row = 0; row < PITCHES.length; row += 1) {
+      if (sequence[row][step]) count += 1;
+    }
+    return count;
+  }
+
+  function pushMusicHistory() {
+    musicHistory.push({
+      sequence: deepClone(sequence),
+      endStep: songEndStep,
+      timeSignature,
+      loopMusic
+    });
+    if (musicHistory.length > MAX_UNDO) musicHistory.shift();
+  }
+
+  function updateComposerButtons() {
+    $("#loopMusicBtn").classList.toggle("active", loopMusic);
+    $("#loopMusicBtn").setAttribute("aria-pressed", String(loopMusic));
+    $$(".time-button").forEach((button) => {
+      button.classList.toggle("active", Number(button.dataset.time) === timeSignature);
+    });
+    $("#endMarkerBtn").classList.toggle("active", endMarkerMode);
+    $("#endMarkerHelp").hidden = !endMarkerMode;
+    $("#endMarkerReadout").textContent = "End: beat " + songEndStep;
+  }
+
   function renderSequencer() {
     const sequencer = $("#sequencer");
     sequencer.innerHTML = "";
+    sequencer.style.gridTemplateColumns = "66px repeat(" + SEQ_STEPS + ", var(--cell))";
 
     const corner = document.createElement("div");
     corner.className = "seq-corner";
     sequencer.appendChild(corner);
 
     for (let step = 0; step < SEQ_STEPS; step += 1) {
-      const header = document.createElement("div");
-      header.className = "seq-step" + (step % 4 === 0 ? " measure" : "") + (isMusicPlaying && step === currentStep ? " playing" : "");
+      const header = document.createElement("button");
+      header.type = "button";
+      header.className = "seq-step" + (step % timeSignature === 0 ? " measure" : "") + (step === songEndStep - 1 ? " end-step" : "");
       header.textContent = step + 1;
       header.dataset.step = step;
+      header.title = "Beat " + (step + 1);
+      header.addEventListener("click", () => {
+        if (!endMarkerMode) return;
+        pushMusicHistory();
+        songEndStep = step + 1;
+        endMarkerMode = false;
+        updateComposerButtons();
+        renderSequencer();
+        toast("Song ends at beat " + songEndStep);
+      });
       sequencer.appendChild(header);
     }
 
@@ -688,55 +771,93 @@
       for (let step = 0; step < SEQ_STEPS; step += 1) {
         const cell = document.createElement("button");
         cell.type = "button";
-        cell.className = "seq-cell" + (step % 4 === 0 ? " measure" : "") + (isMusicPlaying && step === currentStep ? " playing" : "");
+        cell.className = "seq-cell" + (step % timeSignature === 0 ? " measure" : "") + ((row + 1) % 2 === 0 ? " staff-line" : "") + (step >= songEndStep ? " after-end" : "");
         cell.dataset.row = row;
         cell.dataset.step = step;
         const id = sequence[row][step];
         const instrument = id ? instrumentById(id) : null;
         cell.textContent = instrument ? instrument.emoji : "";
-        cell.setAttribute("aria-label", pitch + ", step " + (step + 1) + (instrument ? ", " + instrument.name : ", empty"));
+        cell.setAttribute("aria-label", pitch + ", beat " + (step + 1) + (instrument ? ", " + instrument.name : ", empty"));
+
         cell.addEventListener("click", () => {
+          if (step >= songEndStep) {
+            toast("Move the end marker later to use this beat");
+            return;
+          }
           const old = sequence[row][step];
+
+          if (!old && noteCountAtStep(step) >= MAX_LAYERS) {
+            toast("Only 3 notes can play on one beat");
+            return;
+          }
+
+          pushMusicHistory();
           sequence[row][step] = old === selectedInstrument ? null : selectedInstrument;
           const chosen = sequence[row][step];
           cell.textContent = chosen ? instrumentById(chosen).emoji : "";
-          if (chosen) playInstrument(chosen, noteToFrequency(pitch), .2);
+          cell.setAttribute("aria-label", pitch + ", beat " + (step + 1) + (chosen ? ", " + instrumentById(chosen).name : ", empty"));
+          if (chosen) playInstrument(chosen, noteToFrequency(pitch), .24);
         });
+
         sequencer.appendChild(cell);
       }
     });
+
+    highlightedStep = -1;
+    refreshPlayhead(true);
   }
 
-  function refreshPlayhead() {
-    $$(".seq-step").forEach((el) => {
-      el.classList.toggle("playing", isMusicPlaying && Number(el.dataset.step) === currentStep);
-    });
-    $$(".seq-cell").forEach((el) => {
-      el.classList.toggle("playing", isMusicPlaying && Number(el.dataset.step) === currentStep);
-    });
+  function refreshPlayhead(force = false) {
+    const sequencer = $("#sequencer");
+    if (highlightedStep >= 0) {
+      $$('[data-step="' + highlightedStep + '"]', sequencer).forEach((el) => el.classList.remove("playing"));
+    }
+    if (isMusicPlaying || force) {
+      $$('[data-step="' + currentStep + '"]', sequencer).forEach((el) => {
+        if (isMusicPlaying) el.classList.add("playing");
+      });
+      highlightedStep = isMusicPlaying ? currentStep : -1;
+    }
+
+    const runner = $("#runner");
+    const denom = Math.max(1, songEndStep - 1);
+    runner.style.left = "calc(" + ((currentStep / denom) * 100) + "% - 14px)";
+
+    if (isMusicPlaying && currentStep % timeSignature === 0) {
+      const header = $('.seq-step[data-step="' + currentStep + '"]', sequencer);
+      if (header) header.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+    }
   }
 
   function playStep(step) {
     const bpm = Number($("#tempoSlider").value);
-    const stepDuration = (60 / bpm) / 4;
+    const beatDuration = 60 / bpm;
     const ac = ensureAudio();
     const now = ac.currentTime + .01;
 
     PITCHES.forEach((pitch, row) => {
       const id = sequence[row][step];
-      if (id) playInstrument(id, noteToFrequency(pitch), Math.min(.36, stepDuration * .9), now);
+      if (id) playInstrument(id, noteToFrequency(pitch), Math.min(.55, beatDuration * .82), now);
     });
   }
 
   function scheduleNextStep() {
     if (!isMusicPlaying) return;
     const bpm = Number($("#tempoSlider").value);
-    const baseMs = 60000 / bpm / 4;
-    const swing = Number($("#swingSlider").value) / 100;
-    const delay = currentStep % 2 === 0 ? baseMs * (1 + swing) : baseMs * (1 - swing);
+    const delay = 60000 / bpm;
 
     musicTimer = setTimeout(() => {
-      currentStep = (currentStep + 1) % SEQ_STEPS;
+      const next = currentStep + 1;
+      if (next >= songEndStep) {
+        if (loopMusic) {
+          currentStep = 0;
+        } else {
+          stopMusic();
+          return;
+        }
+      } else {
+        currentStep = next;
+      }
       playStep(currentStep);
       refreshPlayhead();
       scheduleNextStep();
@@ -745,6 +866,7 @@
 
   function startMusic() {
     if (isMusicPlaying) return;
+    if (currentStep >= songEndStep) currentStep = 0;
     ensureAudio();
     isMusicPlaying = true;
     $("#playMusicBtn").textContent = "▶ Playing";
@@ -765,6 +887,39 @@
   $("#playMusicBtn").addEventListener("click", startMusic);
   $("#stopMusicBtn").addEventListener("click", stopMusic);
 
+  $("#loopMusicBtn").addEventListener("click", () => {
+    loopMusic = !loopMusic;
+    updateComposerButtons();
+  });
+
+  $("#undoMusicBtn").addEventListener("click", () => {
+    const previous = musicHistory.pop();
+    if (!previous) return toast("Nothing to undo");
+    stopMusic();
+    sequence = previous.sequence;
+    songEndStep = previous.endStep;
+    timeSignature = previous.timeSignature;
+    loopMusic = previous.loopMusic;
+    updateComposerButtons();
+    renderSequencer();
+  });
+
+  $("#endMarkerBtn").addEventListener("click", () => {
+    endMarkerMode = !endMarkerMode;
+    updateComposerButtons();
+  });
+
+  $$(".time-button").forEach((button) => {
+    button.addEventListener("click", () => {
+      const next = Number(button.dataset.time);
+      if (next === timeSignature) return;
+      pushMusicHistory();
+      timeSignature = next;
+      updateComposerButtons();
+      renderSequencer();
+    });
+  });
+
   $("#auditionBtn").addEventListener("click", () => {
     playInstrument(selectedInstrument, 440, .35);
   });
@@ -774,62 +929,110 @@
     $("#tempoReadout").textContent = event.target.value;
   });
 
-  $("#swingSlider").addEventListener("input", (event) => {
-    $("#swingOut").textContent = event.target.value + "%";
-  });
-
   $("#clearMusicBtn").addEventListener("click", () => {
+    pushMusicHistory();
     stopMusic();
     sequence = makeSequence();
+    songEndStep = SEQ_STEPS;
     renderSequencer();
+    updateComposerButtons();
     toast("Song cleared");
   });
 
-  $("#randomMusicBtn").addEventListener("click", () => {
+  function putDemoNote(seq, beat, pitch, instrument) {
+    const row = PITCHES.indexOf(pitch);
+    if (row < 0 || beat < 0 || beat >= SEQ_STEPS) return;
+    if (seq[row][beat]) return;
+    if (seq.reduce((n, r) => n + (r[beat] ? 1 : 0), 0) >= MAX_LAYERS) return;
+    seq[row][beat] = instrument;
+  }
+
+  function loadDemo(number) {
+    pushMusicHistory();
     stopMusic();
     sequence = makeSequence();
-    const melodic = INSTRUMENTS.filter((i) => !["drum", "clap"].includes(i.id));
-    for (let step = 0; step < SEQ_STEPS; step += 1) {
-      if (Math.random() < .68) {
-        const row = Math.floor(Math.random() * PITCHES.length);
-        sequence[row][step] = melodic[Math.floor(Math.random() * melodic.length)].id;
+    timeSignature = number === 2 ? 3 : 4;
+    songEndStep = number === 1 ? 32 : number === 2 ? 36 : 40;
+    loopMusic = true;
+
+    if (number === 1) {
+      const melody = ["C5", "E5", "G5", "E5", "D5", "F5", "G5", "F5"];
+      for (let i = 0; i < songEndStep; i += 1) {
+        putDemoNote(sequence, i, melody[i % melody.length], i % 2 ? "kalimba" : "star");
+        if (i % 4 === 0) putDemoNote(sequence, i, "C4", "heart");
+        if (i % 4 === 2) putDemoNote(sequence, i, "G4", "ship");
       }
-      if (step % 4 === 0 && Math.random() < .9) {
-        sequence[PITCHES.length - 1][step] = "drum";
+      $("#songName").value = "Sparkle Walk";
+    } else if (number === 2) {
+      const melody = ["G4", "A4", "C5", "A4", "G4", "E4"];
+      for (let i = 0; i < songEndStep; i += 1) {
+        putDemoNote(sequence, i, melody[i % melody.length], i % 6 < 3 ? "cat" : "dog");
+        if (i % 3 === 0) putDemoNote(sequence, i, "C4", "drum");
+        if (i % 6 === 4) putDemoNote(sequence, i, "E4", "pig");
       }
-      if (step % 8 === 4 && Math.random() < .75) {
-        sequence[PITCHES.length - 2][step] = "clap";
+      $("#songName").value = "Pet Parade";
+    } else {
+      const melody = ["C4", "G4", "C5", "E5", "D5", "A4", "F4", "G4"];
+      for (let i = 0; i < songEndStep; i += 1) {
+        putDemoNote(sequence, i, melody[i % melody.length], i % 4 < 2 ? "game" : "car");
+        if (i % 4 === 0) putDemoNote(sequence, i, "C4", "heart");
+        if (i % 8 === 6) putDemoNote(sequence, i, "G5", "lizard");
       }
+      $("#songName").value = "Moon Hop";
     }
+
+    updateComposerButtons();
     renderSequencer();
-    toast("New emoji remix");
+    toast("Demo loaded");
+  }
+
+  $$(".demo-song").forEach((button) => {
+    button.addEventListener("click", () => loadDemo(Number(button.dataset.demo)));
   });
 
   function songPayload() {
     return {
       format: "emojiro-paint-song",
-      version: 1,
+      version: 2,
       name: $("#songName").value || "My Emoji Song",
       tempo: Number($("#tempoSlider").value),
-      swing: Number($("#swingSlider").value),
+      timeSignature,
+      endStep: songEndStep,
+      loop: loopMusic,
       pitches: PITCHES,
       steps: SEQ_STEPS,
+      maxLayersPerBeat: MAX_LAYERS,
       sequence
     };
+  }
+
+  function normalizeSequence(input) {
+    const out = makeSequence();
+    if (!Array.isArray(input)) return out;
+    for (let row = 0; row < Math.min(PITCHES.length, input.length); row += 1) {
+      if (!Array.isArray(input[row])) continue;
+      for (let step = 0; step < Math.min(SEQ_STEPS, input[row].length); step += 1) {
+        const value = input[row][step];
+        if (value && instrumentById(value)) out[row][step] = value;
+      }
+    }
+    return out;
   }
 
   function applySong(song) {
     if (!song || !Array.isArray(song.sequence)) throw new Error("Invalid song");
     stopMusic();
-    sequence = song.sequence.map((row) => Array.from({ length: SEQ_STEPS }, (_, i) => row[i] || null));
-    while (sequence.length < PITCHES.length) sequence.push(Array(SEQ_STEPS).fill(null));
-    sequence = sequence.slice(0, PITCHES.length);
+    musicHistory = [];
+    sequence = normalizeSequence(song.sequence);
     $("#songName").value = song.name || "My Emoji Song";
-    $("#tempoSlider").value = Math.max(60, Math.min(220, Number(song.tempo) || 120));
-    $("#swingSlider").value = Math.max(0, Math.min(45, Number(song.swing) || 0));
+    $("#tempoSlider").value = Math.max(40, Math.min(480, Number(song.tempo) || 120));
+    timeSignature = Number(song.timeSignature) === 3 ? 3 : 4;
+    songEndStep = Math.max(1, Math.min(SEQ_STEPS, Number(song.endStep) || Math.min(SEQ_STEPS, (song.steps || 32))));
+    loopMusic = song.loop !== false;
+    endMarkerMode = false;
     $("#tempoOut").textContent = $("#tempoSlider").value + " BPM";
     $("#tempoReadout").textContent = $("#tempoSlider").value;
-    $("#swingOut").textContent = $("#swingSlider").value + "%";
+    updateComposerButtons();
     renderSequencer();
   }
 
@@ -875,7 +1078,7 @@
   function projectPayload() {
     return {
       format: "emojiro-paint-project",
-      version: 1,
+      version: 2,
       savedAt: new Date().toISOString(),
       paint: {
         frames,
@@ -921,9 +1124,15 @@
   window.addEventListener("keydown", (event) => {
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
       event.preventDefault();
-      if (event.shiftKey) $("#redoBtn").click();
-      else $("#undoBtn").click();
+      if ($("#musicPanel").classList.contains("active")) {
+        $("#undoMusicBtn").click();
+      } else if (event.shiftKey) {
+        $("#redoBtn").click();
+      } else {
+        $("#undoBtn").click();
+      }
     }
+
     if (event.code === "Space" && $("#musicPanel").classList.contains("active") && document.activeElement.tagName !== "INPUT") {
       event.preventDefault();
       if (isMusicPlaying) stopMusic();
@@ -939,5 +1148,6 @@
   renderCanvas();
   renderFrameList();
   renderInstrumentBank();
+  updateComposerButtons();
   renderSequencer();
 })();
