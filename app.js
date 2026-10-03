@@ -2542,6 +2542,7 @@
       pushMusicHistory();
       timeSignature = next;
       updateComposerButtons();
+      renderPercussionGrid();
       renderSequencer();
     });
   });
@@ -2684,8 +2685,15 @@
       ];
     });
 
+    const percussion = [];
+    percussionPattern.forEach((lane, laneIndex) => {
+      lane.slice(0, songEndStep).forEach((active, step) => {
+        if (active) percussion.push([laneIndex, step]);
+      });
+    });
+
     return {
-      v: 1,
+      v: 2,
       n: ($("#songName").value || "My Emoji Song").slice(0, 40),
       t: Number($("#tempoSlider").value),
       m: timeSignature,
@@ -2693,6 +2701,9 @@
       l: loopMusic ? 1 : 0,
       sl: sectionLoopEnabled ? 1 : 0,
       s: sectionNames.slice(),
+      st: sectionTempoOverrides.map((value) => value == null ? 0 : Number(value)),
+      h: humanizeMs,
+      p: percussion,
       x: placements,
       z: mixer
     };
@@ -2710,6 +2721,18 @@
         sharedSequence[row][step] = instrument.id;
       }
     });
+
+    const sharedPercussion = makePercussionPattern();
+    if (Array.isArray(compact.p)) {
+      compact.p.forEach((entry) => {
+        if (!Array.isArray(entry) || entry.length < 2) return;
+        const lane = Number(entry[0]);
+        const step = Number(entry[1]);
+        if (lane >= 0 && lane < PERCUSSION_LANES.length && step >= 0 && step < SEQ_STEPS) {
+          sharedPercussion[lane][step] = true;
+        }
+      });
+    }
 
     const mixer = {};
     INSTRUMENTS.forEach((instrument, index) => {
@@ -2734,6 +2757,11 @@
       loop: compact.l !== 0,
       sectionLoop: Boolean(compact.sl),
       sections: Array.isArray(compact.s) ? compact.s.slice(0, SECTION_COUNT) : undefined,
+      sectionTempoOverrides: Array.isArray(compact.st)
+        ? compact.st.slice(0, SECTION_COUNT).map((value) => Number(value) >= 40 ? Number(value) : null)
+        : Array(SECTION_COUNT).fill(null),
+      percussion: sharedPercussion,
+      humanizeMs: Math.max(0, Math.min(60, Number(compact.h) || 0)),
       steps: SEQ_STEPS,
       mixer,
       sequence: sharedSequence
@@ -2764,7 +2792,7 @@
   function songPayload() {
     return {
       format: "emojiro-paint-song",
-      version: 6,
+      version: 7,
       name: $("#songName").value || "My Emoji Song",
       tempo: Number($("#tempoSlider").value),
       timeSignature,
@@ -2918,14 +2946,29 @@
   function exportMidi() {
     const PPQ = 480;
     const noteLength = Math.round(PPQ * .82);
-    const tempo = Math.max(1, Math.round(60000000 / Number($("#tempoSlider").value)));
     const endTick = songEndStep * PPQ;
     const tracks = [];
 
+    const tempoBytes = (bpm) => {
+      const tempo = Math.max(1, Math.round(60000000 / bpm));
+      return [0xFF, 0x51, 0x03, (tempo >> 16) & 255, (tempo >> 8) & 255, tempo & 255];
+    };
+
     const metaEvents = [
-      { tick: 0, order: 0, bytes: [0xFF, 0x51, 0x03, (tempo >> 16) & 255, (tempo >> 8) & 255, tempo & 255] },
+      { tick: 0, order: 0, bytes: tempoBytes(effectiveTempoAtStep(0)) },
       { tick: 0, order: 1, bytes: [0xFF, 0x58, 0x04, timeSignature, 0x02, 24, 8] }
     ];
+
+    let previousTempo = effectiveTempoAtStep(0);
+    for (let section = 1; section < SECTION_COUNT; section += 1) {
+      const step = section * SECTION_LENGTH;
+      if (step >= songEndStep) break;
+      const bpm = effectiveTempoAtStep(step);
+      if (bpm !== previousTempo) {
+        metaEvents.push({ tick: step * PPQ, order: 0, bytes: tempoBytes(bpm) });
+        previousTempo = bpm;
+      }
+    }
     tracks.push(midiTrackChunk(metaEvents, endTick));
 
     const channels = [0,1,2,3,4,5,6,7,8,10,11,12,13,14,15];
@@ -2934,14 +2977,16 @@
       pig:80, duck:81, baby:52, plane:27, ship:115, car:16, heart:33
     };
     let melodicChannelIndex = 0;
+    const anySolo = Object.values(instrumentMix).some((entry) => entry && entry.solo);
 
     INSTRUMENTS.forEach((instrument) => {
       const used = sequence.some((row) => row.slice(0, songEndStep).includes(instrument.id));
       if (!used) return;
 
       const channel = instrument.id === "drum" ? 9 : channels[melodicChannelIndex++];
-      const mix = instrumentMix[instrument.id] || { volume: 1, mute: false, solo: false, pan: 0, filter: 0, delay: 0 };
-      const anySolo = Object.values(instrumentMix).some((entry) => entry && entry.solo);
+      const mix = instrumentMix[instrument.id] || {
+        volume: 1, mute: false, solo: false, pan: 0, filter: 0, delay: 0
+      };
       const audible = !mix.mute && (!anySolo || mix.solo);
       const volume = audible ? Math.round(Math.max(0, Math.min(1, mix.volume)) * 127) : 0;
       const pan = Math.round((Math.max(-1, Math.min(1, Number(mix.pan) || 0)) + 1) * 63.5);
@@ -2956,7 +3001,9 @@
       PITCHES.forEach((pitch, row) => {
         for (let step = 0; step < songEndStep; step += 1) {
           if (sequence[row][step] !== instrument.id) continue;
-          const tick = step * PPQ;
+          const beatMs = 60000 / effectiveTempoAtStep(step);
+          const humanTicks = Math.round((humanizeOffsetMs(row, step) / beatMs) * PPQ);
+          const tick = step * PPQ + humanTicks;
           const midiNote = instrument.id === "drum"
             ? 36 + ((PITCHES.length - 1 - row) % 12)
             : noteToMidi(pitch);
@@ -2965,8 +3012,25 @@
         }
       });
 
-      tracks.push(midiTrackChunk(events, endTick));
+      tracks.push(midiTrackChunk(events, endTick + PPQ));
     });
+
+    const percussionEvents = [];
+    for (let laneIndex = 0; laneIndex < PERCUSSION_LANES.length; laneIndex += 1) {
+      const lane = PERCUSSION_LANES[laneIndex];
+      const mix = instrumentMix[lane.instrument] || { volume: 1, mute: false, solo: false };
+      const audible = !mix.mute && (!anySolo || mix.solo) && Number(mix.volume) > 0;
+      if (!audible) continue;
+      for (let step = 0; step < songEndStep; step += 1) {
+        if (!percussionPattern[laneIndex][step]) continue;
+        const beatMs = 60000 / effectiveTempoAtStep(step);
+        const humanTicks = Math.round((humanizeOffsetMs(PITCHES.length + laneIndex, step) / beatMs) * PPQ);
+        const tick = step * PPQ + humanTicks;
+        percussionEvents.push({ tick, order: 3, bytes: [0x99, lane.midi, 105] });
+        percussionEvents.push({ tick: tick + Math.round(PPQ * .3), order: 2, bytes: [0x89, lane.midi, 0] });
+      }
+    }
+    if (percussionEvents.length) tracks.push(midiTrackChunk(percussionEvents, endTick + PPQ));
 
     const bytes = [];
     ["M","T","h","d"].forEach((c) => bytes.push(c.charCodeAt(0)));
@@ -3021,69 +3085,90 @@
 
   async function exportWav() {
     const sampleRate = 22050;
-    const beatSeconds = 60 / Number($("#tempoSlider").value);
     const tailSeconds = 2.2;
-    const durationSeconds = songEndStep * beatSeconds + tailSeconds;
+    const stepStarts = [0];
+    for (let step = 0; step < songEndStep; step += 1) {
+      stepStarts.push(stepStarts[step] + 60 / effectiveTempoAtStep(step));
+    }
+
+    const durationSeconds = stepStarts[songEndStep] + tailSeconds + humanizeMs / 1000;
     const sampleCount = Math.ceil(durationSeconds * sampleRate);
     const left = new Float32Array(sampleCount);
     const right = new Float32Array(sampleCount);
     const anySolo = Object.values(instrumentMix).some((entry) => entry && entry.solo);
 
+    const mixVoice = (id, frequency, startSample) => {
+      const mix = instrumentMix[id] || {
+        volume: 1, mute: false, solo: false, pan: 0, filter: 0, delay: 0
+      };
+      if (mix.mute || (anySolo && !mix.solo) || Number(mix.volume) <= 0) return;
+
+      const config = offlineVoiceConfig(id, frequency);
+      const voiceSamples = Math.min(sampleCount - startSample, Math.ceil(config.duration * sampleRate));
+      if (voiceSamples <= 0) return;
+
+      const pan = Math.max(-1, Math.min(1, Number(mix.pan) || 0));
+      const leftPan = Math.cos((pan + 1) * Math.PI / 4);
+      const rightPan = Math.sin((pan + 1) * Math.PI / 4);
+      const volume = Math.max(0, Math.min(1, Number(mix.volume) || 0));
+      const filterAmount = Math.max(0, Math.min(1, Number(mix.filter) || 0));
+      const delayAmount = Math.max(0, Math.min(1, Number(mix.delay) || 0));
+      const cutoff = Math.max(450, 19000 * Math.pow(0.055, filterAmount));
+      const rc = 1 / (Math.PI * 2 * cutoff);
+      const alpha = (1 / sampleRate) / (rc + (1 / sampleRate));
+      const delaySamples = Math.round((.14 + delayAmount * .34) * sampleRate);
+      let filteredSample = 0;
+
+      const addStereo = (index, sample, amount = 1) => {
+        if (index < 0 || index >= sampleCount) return;
+        left[index] += sample * leftPan * amount;
+        right[index] += sample * rightPan * amount;
+      };
+
+      for (let i = 0; i < voiceSamples; i += 1) {
+        const t = i / sampleRate;
+        const progress = i / Math.max(1, voiceSamples - 1);
+        const envelope = Math.pow(1 - progress, id === "drum" ? 3.8 : 2.1) * Math.min(1, t / .008);
+        const bend = config.bend ? 1 + (config.bend - 1) * progress : 1;
+        const phase = Math.PI * 2 * config.frequency * bend * t;
+        let sample = offlineWave(config.wave, phase);
+        if (config.harmonic) sample += .28 * offlineWave("sine", phase * config.harmonic);
+        if (config.noise) sample += (Math.random() * 2 - 1) * config.noise;
+        sample *= config.gain * volume * envelope;
+
+        if (filterAmount > .005) {
+          filteredSample += alpha * (sample - filteredSample);
+          sample = filteredSample;
+        }
+
+        const index = startSample + i;
+        addStereo(index, sample);
+
+        if (delayAmount > .005) {
+          const wet = .12 + delayAmount * .38;
+          addStereo(index + delaySamples, sample, wet);
+          addStereo(index + delaySamples * 2, sample, wet * (.25 + delayAmount * .25));
+        }
+      }
+    };
+
     for (let step = 0; step < songEndStep; step += 1) {
-      const startSample = Math.floor(step * beatSeconds * sampleRate);
+      const baseSample = Math.floor(stepStarts[step] * sampleRate);
 
       for (let row = 0; row < PITCHES.length; row += 1) {
         const id = sequence[row][step];
         if (!id) continue;
-        const mix = instrumentMix[id] || { volume: 1, mute: false, solo: false, pan: 0, filter: 0, delay: 0 };
-        if (mix.mute || (anySolo && !mix.solo) || Number(mix.volume) <= 0) continue;
+        const humanSamples = Math.round(humanizeOffsetMs(row, step) / 1000 * sampleRate);
+        mixVoice(id, noteToFrequency(PITCHES[row]), baseSample + humanSamples);
+      }
 
-        const config = offlineVoiceConfig(id, noteToFrequency(PITCHES[row]));
-        const voiceSamples = Math.min(sampleCount - startSample, Math.ceil(config.duration * sampleRate));
-        const pan = Math.max(-1, Math.min(1, Number(mix.pan) || 0));
-        const leftPan = Math.cos((pan + 1) * Math.PI / 4);
-        const rightPan = Math.sin((pan + 1) * Math.PI / 4);
-        const volume = Math.max(0, Math.min(1, Number(mix.volume) || 0));
-
-        const filterAmount = Math.max(0, Math.min(1, Number(mix.filter) || 0));
-        const delayAmount = Math.max(0, Math.min(1, Number(mix.delay) || 0));
-        const cutoff = Math.max(450, 19000 * Math.pow(0.055, filterAmount));
-        const rc = 1 / (Math.PI * 2 * cutoff);
-        const alpha = (1 / sampleRate) / (rc + (1 / sampleRate));
-        const delaySamples = Math.round((.14 + delayAmount * .34) * sampleRate);
-        let filteredSample = 0;
-
-        const addStereo = (index, sample, amount = 1) => {
-          if (index < 0 || index >= sampleCount) return;
-          left[index] += sample * leftPan * amount;
-          right[index] += sample * rightPan * amount;
-        };
-
-        for (let i = 0; i < voiceSamples; i += 1) {
-          const t = i / sampleRate;
-          const progress = i / Math.max(1, voiceSamples - 1);
-          const envelope = Math.pow(1 - progress, id === "drum" ? 3.8 : 2.1) * Math.min(1, t / .008);
-          const bend = config.bend ? 1 + (config.bend - 1) * progress : 1;
-          const phase = Math.PI * 2 * config.frequency * bend * t;
-          let sample = offlineWave(config.wave, phase);
-          if (config.harmonic) sample += .28 * offlineWave("sine", phase * config.harmonic);
-          if (config.noise) sample += (Math.random() * 2 - 1) * config.noise;
-          sample *= config.gain * volume * envelope;
-
-          if (filterAmount > .005) {
-            filteredSample += alpha * (sample - filteredSample);
-            sample = filteredSample;
-          }
-
-          const index = startSample + i;
-          addStereo(index, sample);
-
-          if (delayAmount > .005) {
-            const wet = .12 + delayAmount * .38;
-            addStereo(index + delaySamples, sample, wet);
-            addStereo(index + delaySamples * 2, sample, wet * (.25 + delayAmount * .25));
-          }
-        }
+      for (let laneIndex = 0; laneIndex < PERCUSSION_LANES.length; laneIndex += 1) {
+        if (!percussionPattern[laneIndex][step]) continue;
+        const lane = PERCUSSION_LANES[laneIndex];
+        const humanSamples = Math.round(
+          humanizeOffsetMs(PITCHES.length + laneIndex, step) / 1000 * sampleRate
+        );
+        mixVoice(lane.instrument, noteToFrequency(lane.pitch), baseSample + humanSamples);
       }
 
       if (step % 8 === 7) await new Promise((resolve) => setTimeout(resolve, 0));
@@ -3428,16 +3513,23 @@
 
     try {
       recorder.start(250);
-      const beatMs = 60000 / Number($("#tempoSlider").value);
-
       for (let step = 0; step < songEndStep; step += 1) {
+        const beatMs = 60000 / effectiveTempoAtStep(step);
         const frameIndex = animationFrameForBeat(step);
         drawFrameToVideoContext(exportCtx, frames[frameIndex] || frames[0], exportCanvas.width, exportCanvas.height);
 
-        const when = ac.currentTime + .015;
+        const baseWhen = ac.currentTime + .015;
         PITCHES.forEach((pitch, row) => {
           const id = sequence[row][step];
-          if (id) playInstrument(id, noteToFrequency(pitch), Math.min(.55, beatMs / 1000 * .82), when);
+          if (!id) return;
+          const when = baseWhen + humanizeOffsetMs(row, step) / 1000;
+          playInstrument(id, noteToFrequency(pitch), Math.min(.55, beatMs / 1000 * .82), when);
+        });
+
+        PERCUSSION_LANES.forEach((lane, laneIndex) => {
+          if (!percussionPattern[laneIndex][step]) return;
+          const when = baseWhen + humanizeOffsetMs(PITCHES.length + laneIndex, step) / 1000;
+          playInstrument(lane.instrument, noteToFrequency(lane.pitch), Math.min(.45, beatMs / 1000 * .72), when);
         });
 
         await new Promise((resolve) => setTimeout(resolve, beatMs));
@@ -3512,7 +3604,7 @@
   function projectPayload() {
     return {
       format: "emojiro-paint-project",
-      version: 6,
+      version: 7,
       name: ($("#projectNameInput").value || "Untitled Emojiro Project").trim().slice(0, 40),
       savedAt: new Date().toISOString(),
       paint: {
@@ -3619,7 +3711,7 @@
     );
     return {
       format: "emojiro-paint-project",
-      version: 6,
+      version: 7,
       name: "Untitled Emojiro Project",
       savedAt: new Date().toISOString(),
       paint: {
@@ -3637,7 +3729,7 @@
       },
       music: {
         format: "emojiro-paint-song",
-        version: 6,
+        version: 7,
         name: "My Emoji Song",
         tempo: 120,
         timeSignature: 4,
@@ -3647,6 +3739,9 @@
         steps: SEQ_STEPS,
         maxLayersPerBeat: MAX_LAYERS,
         sections: ["Section A", "Section B", "Section C", "Section D"],
+        sectionTempoOverrides: [null, null, null, null],
+        percussion: makePercussionPattern(),
+        humanizeMs: 0,
         sectionLoop: false,
         view: {
           zoom: 38,
