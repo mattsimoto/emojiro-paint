@@ -47,7 +47,10 @@ Emojiro Paint is a touch-friendly browser creativity toy inspired by classic con
 - Composer zoom plus compact notation mode for small screens
 - Scale guides for natural-note composition
 - One-tap natural-note triad insertion using the selected emoji instrument
+- Four chord-progression templates with block, ascending-arpeggio, and descending-arpeggio fills
 - Optional drag-to-paint note entry for mouse, pen, and touch
+- 13-note on-screen Live Keys keyboard spanning B3–G5
+- Quantized live recording into the current beat with one-undo take grouping
 - Per-instrument volume, mute, solo, stereo pan, tone filter, and echo controls
 - Three original demo songs
 - Song save/load in local storage
@@ -110,7 +113,7 @@ Use the frame strip to add, duplicate, delete, reorder, or select frames. **Onio
 
 ### Music
 
-Choose an emoji instrument, then place it on the staff. Each beat supports up to three simultaneous notes. Selecting the same instrument in the same cell removes it. Tap any beat to select its measure, then copy, paste, or clear the measure. The 96-beat song is also organized into four editable 24-beat sections that can be renamed, duplicated, moved, copied, pasted, or cleared. The mixer controls volume, mute, solo, stereo pan, tone filtering, and echo for each emoji instrument. Sections can be auditioned independently and looped while editing. Scale guides can dim notes outside the selected natural-note scale, chord helpers insert a triad at the selected beat, and **Drag to paint notes** turns the sequencer into a touch-friendly note brush. Press **Space** to play or stop while Music Maker is active.
+Choose an emoji instrument, then place it on the staff. Each beat supports up to three simultaneous notes. Selecting the same instrument in the same cell removes it. Tap any beat to select its measure, then copy, paste, or clear the measure. The 96-beat song is also organized into four editable 24-beat sections that can be renamed, duplicated, moved, copied, pasted, or cleared. The mixer controls volume, mute, solo, stereo pan, tone filtering, and echo for each emoji instrument. Sections can be auditioned independently and looped while editing. Scale guides can dim notes outside the selected natural-note scale, chord helpers insert a triad at the selected beat, and **Drag to paint notes** turns the sequencer into a touch-friendly note brush. Progression templates can fill the selected section with block chords or arpeggios, while **Live Keys** can be played from the on-screen keyboard or A/W/S/E/D/F/T/G/Y/H/U/J/K computer keys and quantized directly into the active beat. Press **Space** to play or stop while Music Maker is active.
 
 ## Architecture
 
@@ -131,9 +134,10 @@ The project intentionally remains plain HTML, CSS, and JavaScript:
 ## Next milestones
 
 - Section-level tempo or instrument overrides
-- Chord progression templates and arpeggiation
-- Quantized live note recording from keyboard/touch input
+- Section-level tempo or instrument overrides
 - Optional share-link compression for very dense songs
+- Pattern randomization and humanization controls
+- Drum/percussion lane mode
 - Cloud-sync option for project libraries
 - Original mini-games and interactive title-screen toys
 
