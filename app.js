@@ -114,7 +114,7 @@
     area.remove();
   }
 
-  $(".mode-tab").forEach((button) => {
+  $$(".mode-tab").forEach((button) => {
     button.addEventListener("click", () => {
       $$(".mode-tab").forEach((tab) => tab.classList.toggle("active", tab === button));
       $$(".panel").forEach((panel) => panel.classList.toggle("active", panel.id === button.dataset.panel));
@@ -1739,12 +1739,13 @@
 
   function refreshScaleGuide() {
     const allowed = new Set(SCALE_GUIDES[scaleAssist] || SCALE_GUIDES.all);
-    $("#sequencer .seq-label").forEach((label) => {
+    $("#sequencer").classList.toggle("note-paint-mode", notePaintMode);
+    $$("#sequencer .seq-label").forEach((label) => {
       const active = allowed.has(noteClass(label.textContent));
       label.classList.toggle("scale-active", active && scaleAssist !== "all");
       label.classList.toggle("scale-muted", !active);
     });
-    $("#sequencer .seq-cell").forEach((cell) => {
+    $$("#sequencer .seq-cell").forEach((cell) => {
       const row = Number(cell.dataset.row);
       const pitch = PITCHES[row];
       cell.classList.toggle("scale-muted", !allowed.has(noteClass(pitch)));
