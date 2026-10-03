@@ -1213,6 +1213,15 @@
     "A-C-E": ["A4","C5","E5"],
     "B-D-F": ["B4","D5","F5"]
   };
+  const PROGRESSION_GUIDES = {
+    "I-V-vi-IV": ["C-E-G","G-B-D","A-C-E","F-A-C"],
+    "I-IV-V-I": ["C-E-G","F-A-C","G-B-D","C-E-G"],
+    "vi-IV-I-V": ["A-C-E","F-A-C","C-E-G","G-B-D"],
+    "ii-V-I-I": ["D-F-A","G-B-D","C-E-G","C-E-G"]
+  };
+  const LIVE_KEYBOARD_KEYS = ["a","w","s","e","d","f","t","g","y","h","u","j","k"];
+  let liveRecordEnabled = false;
+  let liveRecordTakeStarted = false;
   let instrumentMix = Object.fromEntries(
     INSTRUMENTS.map((instrument) => [instrument.id, {
       volume: 1, mute: false, solo: false, pan: 0, filter: 0, delay: 0
@@ -1836,6 +1845,123 @@
     sequencer.addEventListener("pointerup", finish);
     sequencer.addEventListener("pointercancel", finish);
   }
+
+  function placeHelperNote(note, step) {
+    const row = PITCHES.indexOf(note);
+    if (row < 0 || step < 0 || step >= songEndStep) return false;
+    if (sequence[row][step]) return false;
+    if (noteCountAtStep(step) >= MAX_LAYERS) return false;
+    sequence[row][step] = selectedInstrument;
+    return true;
+  }
+
+  function fillSelectedSectionProgression() {
+    const progression = PROGRESSION_GUIDES[$("#progressionSelect").value] || PROGRESSION_GUIDES["I-V-vi-IV"];
+    const style = $("#progressionStyleSelect").value;
+    const start = sectionStart();
+    const end = Math.min(songEndStep, start + SECTION_LENGTH);
+    if (end <= start) return toast("This section is beyond the song end marker");
+
+    pushMusicHistory();
+    let added = 0;
+    let measureIndex = 0;
+
+    for (let beat = start; beat < end; beat += timeSignature) {
+      const chordKey = progression[measureIndex % progression.length];
+      let notes = (CHORD_GUIDES[chordKey] || []).slice();
+      if (style === "down") notes.reverse();
+
+      if (style === "block") {
+        notes.forEach((note) => {
+          if (placeHelperNote(note, beat)) added += 1;
+        });
+      } else {
+        notes.forEach((note, offset) => {
+          const step = beat + offset;
+          if (step < Math.min(end, beat + timeSignature) && placeHelperNote(note, step)) added += 1;
+        });
+      }
+      measureIndex += 1;
+    }
+
+    renderSequencer();
+    toast(added ? "Progression added to section" : "No open note slots for progression");
+  }
+
+  function livePitchTrigger(pitch, button = null) {
+    const row = PITCHES.indexOf(pitch);
+    if (row < 0) return;
+
+    if (button) {
+      button.classList.add("active");
+      setTimeout(() => button.classList.remove("active"), 120);
+    }
+
+    playInstrument(selectedInstrument, noteToFrequency(pitch), .32);
+
+    if (!liveRecordEnabled) return;
+
+    const step = isMusicPlaying
+      ? Math.max(0, Math.min(songEndStep - 1, currentStep))
+      : Math.max(0, Math.min(songEndStep - 1, measureEditStep));
+
+    const existing = sequence[row][step];
+    if (!existing && noteCountAtStep(step) >= MAX_LAYERS) {
+      toast("Only 3 notes can play on one beat");
+      return;
+    }
+
+    if (!liveRecordTakeStarted) {
+      pushMusicHistory();
+      liveRecordTakeStarted = true;
+    }
+
+    if (existing !== selectedInstrument) {
+      sequence[row][step] = selectedInstrument;
+      const cell = $('.seq-cell[data-row="' + row + '"][data-step="' + step + '"]');
+      if (cell) {
+        const instrument = instrumentById(selectedInstrument);
+        cell.textContent = instrument ? instrument.emoji : "";
+        cell.setAttribute("aria-label", pitch + ", beat " + (step + 1) + ", " + (instrument ? instrument.name : "note"));
+      }
+    }
+
+    measureEditStep = step;
+    selectedSection = Math.floor(step / SECTION_LENGTH);
+    refreshMeasureSelection();
+    refreshSectionSelection();
+    renderSectionBar();
+  }
+
+  function renderLiveKeyboard() {
+    const keyboard = $("#liveKeyboard");
+    keyboard.innerHTML = "";
+    const pitches = PITCHES.slice().reverse();
+
+    pitches.forEach((pitch, index) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "live-key";
+      button.dataset.pitch = pitch;
+      button.innerHTML = pitch + "<span>" + LIVE_KEYBOARD_KEYS[index].toUpperCase() + "</span>";
+      button.setAttribute("aria-label", "Play " + pitch);
+      button.addEventListener("pointerdown", (event) => {
+        event.preventDefault();
+        livePitchTrigger(pitch, button);
+      });
+      keyboard.appendChild(button);
+    });
+  }
+
+  $("#fillProgressionBtn").addEventListener("click", fillSelectedSectionProgression);
+
+  $("#liveRecordBtn").addEventListener("click", () => {
+    liveRecordEnabled = !liveRecordEnabled;
+    liveRecordTakeStarted = false;
+    $("#liveRecordBtn").classList.toggle("active", liveRecordEnabled);
+    $("#liveRecordBtn").setAttribute("aria-pressed", String(liveRecordEnabled));
+    $("#liveRecordBtn").textContent = liveRecordEnabled ? "⏺ Recording" : "⏺ Record off";
+  });
 
   function applyComposerView() {
     const sequencer = $("#sequencer");
@@ -3451,6 +3577,26 @@
   // -----------------------------
 
   window.addEventListener("keydown", (event) => {
+    const tag = document.activeElement && document.activeElement.tagName;
+    const typing = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
+    const liveKeyIndex = LIVE_KEYBOARD_KEYS.indexOf(event.key.toLowerCase());
+    if (
+      liveKeyIndex >= 0 &&
+      !typing &&
+      !event.ctrlKey &&
+      !event.metaKey &&
+      !event.altKey &&
+      $("#musicPanel").classList.contains("active")
+    ) {
+      event.preventDefault();
+      if (!event.repeat) {
+        const pitch = PITCHES.slice().reverse()[liveKeyIndex];
+        const button = $('.live-key[data-pitch="' + pitch + '"]');
+        livePitchTrigger(pitch, button);
+      }
+      return;
+    }
+
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
       event.preventDefault();
       if ($("#musicPanel").classList.contains("active")) {
@@ -3474,6 +3620,7 @@
   // -----------------------------
 
   setupNotePaintEvents();
+  renderLiveKeyboard();
   $("#scaleAssistSelect").value = scaleAssist;
   $("#notePaintToggle").checked = notePaintMode;
   $("#videoPresetSelect").value = videoPreset;
