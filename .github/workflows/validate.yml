@@ -27,6 +27,8 @@ jobs:
         run: |
           test -f index.html
           test -f styles.css
+          test -f paint-plus.css
+          test -f composer.css
           test -f app.js
           test -f manifest.webmanifest
           test -f favicon.svg
