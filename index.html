@@ -148,7 +148,8 @@
               </div>
               <div class="animation-export-actions">
                 <button id="exportGifBtn" class="button small" type="button">🖼️ Export GIF</button>
-                <button id="exportWebmBtn" class="button small primary" type="button">🎬 Export WebM</button>
+                <button id="exportWebmBtn" class="button small" type="button">🎬 Export WebM</button>
+                <button id="exportMusicVideoBtn" class="button small primary" type="button">🎵🎬 Music Video</button>
               </div>
             </div>
           </div>
@@ -211,6 +212,8 @@
             <button id="moveSectionLeftBtn" class="button small" type="button">← Move</button>
             <button id="moveSectionRightBtn" class="button small" type="button">Move →</button>
             <button id="clearSectionBtn" class="button small danger" type="button">🧽 Clear</button>
+            <button id="playSectionBtn" class="button small primary" type="button">▶ Play section</button>
+            <button id="loopSectionBtn" class="button small toggle-button" type="button" aria-pressed="false">🔁 Loop section</button>
           </div>
         </div>
 
@@ -239,7 +242,7 @@
 
         <details class="mixer-card card">
           <summary>🎚️ Instrument Mixer</summary>
-          <p>Set volume or mute individual emoji instruments. Mixer settings are saved with the song.</p>
+          <p>Set volume, pan, solo, mute, tone filtering, and echo for each emoji instrument. Mixer settings are saved with the song.</p>
           <div id="instrumentMixer" class="instrument-mixer"></div>
         </details>
 
@@ -253,6 +256,16 @@
             <button class="button small demo-song" data-demo="2" type="button">🐾 Pet Parade</button>
             <button class="button small demo-song" data-demo="3" type="button">🚀 Moon Hop</button>
           </div>
+        </div>
+
+        <div class="composer-view card">
+          <label class="range-row">
+            <span>Zoom</span>
+            <input id="composerZoom" type="range" min="28" max="58" value="38" />
+            <output id="composerZoomOut">38 px</output>
+          </label>
+          <label class="check-row"><input id="compactComposerToggle" type="checkbox" /> Compact notation</label>
+          <button id="jumpToSectionBtn" class="button small" type="button">↪ Selected section</button>
         </div>
 
         <div class="sequencer-card card">
