@@ -147,6 +147,15 @@
                 <label class="check-row"><input id="syncMusicToggle" type="checkbox" /> 🎵 Beat-lock animation to composer</label>
               </div>
               <div class="animation-export-actions">
+                <label class="video-preset-label">
+                  Video size
+                  <select id="videoPresetSelect">
+                    <option value="landscape">16:9 Landscape</option>
+                    <option value="square">1:1 Square</option>
+                    <option value="portrait">9:16 Portrait</option>
+                    <option value="canvas">4:3 Canvas</option>
+                  </select>
+                </label>
                 <button id="exportGifBtn" class="button small" type="button">🖼️ Export GIF</button>
                 <button id="exportWebmBtn" class="button small" type="button">🎬 Export WebM</button>
                 <button id="exportMusicVideoBtn" class="button small primary" type="button">🎵🎬 Music Video</button>
@@ -258,6 +267,33 @@
           </div>
         </div>
 
+        <div class="composer-assist card">
+          <div class="assist-group">
+            <strong>Scale guide</strong>
+            <select id="scaleAssistSelect" aria-label="Scale guide">
+              <option value="all">All natural notes</option>
+              <option value="c-major">C major</option>
+              <option value="a-minor">A natural minor</option>
+              <option value="c-pentatonic">C major pentatonic</option>
+              <option value="a-pentatonic">A minor pentatonic</option>
+            </select>
+          </div>
+          <div class="assist-group">
+            <strong>Chord helper</strong>
+            <select id="chordAssistSelect" aria-label="Chord helper">
+              <option value="C-E-G">C major</option>
+              <option value="D-F-A">D minor</option>
+              <option value="E-G-B">E minor</option>
+              <option value="F-A-C">F major</option>
+              <option value="G-B-D">G major</option>
+              <option value="A-C-E">A minor</option>
+              <option value="B-D-F">B diminished</option>
+            </select>
+            <button id="insertChordBtn" class="button small primary" type="button">🎼 Insert chord</button>
+          </div>
+          <label class="check-row"><input id="notePaintToggle" type="checkbox" /> Drag to paint notes</label>
+        </div>
+
         <div class="composer-view card">
           <label class="range-row">
             <span>Zoom</span>
@@ -291,6 +327,7 @@
             <button id="saveSongBtn" class="button" type="button">💾 Save song</button>
             <button id="loadSongBtn" class="button" type="button">📂 Load song</button>
             <button id="exportSongBtn" class="button" type="button">⬇️ Export JSON</button>
+            <button id="shareSongBtn" class="button" type="button">🔗 Copy song link</button>
             <button id="exportMidiBtn" class="button" type="button">🎹 Export MIDI</button>
             <button id="exportWavBtn" class="button primary" type="button">🔊 Export WAV</button>
             <label class="button file-button">
