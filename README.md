@@ -57,10 +57,13 @@ Emojiro Paint is a touch-friendly browser creativity toy inspired by classic con
 - Pattern Lab random melody generation using the active scale guide and adjustable density
 - Deterministic 0–60 ms humanization applied consistently to playback, MIDI, WAV, and music-video timing
 - Per-instrument volume, mute, solo, stereo pan, tone filter, and echo controls
+- Section-level instrument palettes that can constrain editing to a focused subset of instruments
+- Section-level mixer snapshots that automatically affect live playback, MIDI, WAV, and music-video export
 - Three original demo songs
 - Song save/load in local storage
 - JSON song import/export
-- Shareable URL-encoded song links that load directly from the page hash
+- Shareable song links that load directly from the page hash
+- Optional gzip-compressed share links for dense songs, with automatic fallback to the older plain format
 - Standard MIDI file export
 - Offline-rendered stereo WAV export with mixer effects
 - Combined animation + soundtrack video export using browser MediaRecorder
@@ -73,8 +76,17 @@ Emojiro Paint is a touch-friendly browser creativity toy inspired by classic con
 - Named on-device project library
 - Up to 8 named projects with open, delete, and individual export controls
 - Full-project JSON import/export for moving projects between devices
+- Optional encrypted Supabase cloud-library sync using a user-owned project, publishable key, and high-entropy sync code
+- Cloud pull merges projects by project ID and keeps the newer copy
 - Save and restore the complete paint, animation, custom-stamp, mixer, section, and music state locally
-- No account or server is required
+- No account or server is required for normal use
+
+### 🕹️ Toy Box
+
+- Clickable title-logo toy that bursts emoji across the header
+- **Emoji Catch** — a 30-second pointer/touch catch game with local best score
+- **Rhythm Relay** — a four-lane reflex/rhythm game using Emojiro instrument sounds
+- Mini-game scores are local-only and do not modify projects
 
 ### 📱 Mobile support
 
@@ -120,7 +132,20 @@ Use the frame strip to add, duplicate, delete, reorder, or select frames. **Onio
 
 ### Music
 
-Choose an emoji instrument, then place it on the staff. Each beat supports up to three simultaneous notes. Selecting the same instrument in the same cell removes it. Tap any beat to select its measure, then copy, paste, or clear the measure. The 96-beat song is also organized into four editable 24-beat sections that can be renamed, duplicated, moved, copied, pasted, or cleared. The mixer controls volume, mute, solo, stereo pan, tone filtering, and echo for each emoji instrument. Sections can be auditioned independently, looped while editing, and assigned their own tempo. Copying, moving, duplicating, or creating a variation carries the section's melody, percussion pattern, and tempo together. Scale guides can dim notes outside the selected natural-note scale, chord helpers insert a triad at the selected beat, and **Drag to paint notes** turns the sequencer into a touch-friendly note brush. Progression templates can fill the selected section with block chords or arpeggios, while **Live Keys** can be played from the on-screen keyboard or A/W/S/E/D/F/T/G/Y/H/U/J/K computer keys and quantized directly into the active beat. Press **Space** to play or stop while Music Maker is active.
+Choose an emoji instrument, then place it on the staff. Each beat supports up to three simultaneous notes. Selecting the same instrument in the same cell removes it. Tap any beat to select its measure, then copy, paste, or clear the measure. The 96-beat song is also organized into four editable 24-beat sections that can be renamed, duplicated, moved, copied, pasted, or cleared. The mixer controls volume, mute, solo, stereo pan, tone filtering, and echo for each emoji instrument. Each section can also define its own instrument palette and save a mixer snapshot that automatically takes over for that section during playback and export. Sections can be auditioned independently, looped while editing, and assigned their own tempo. Copying, moving, duplicating, or creating a variation carries the section's melody, percussion pattern, and tempo together. Scale guides can dim notes outside the selected natural-note scale, chord helpers insert a triad at the selected beat, and **Drag to paint notes** turns the sequencer into a touch-friendly note brush. Progression templates can fill the selected section with block chords or arpeggios, while **Live Keys** can be played from the on-screen keyboard or A/W/S/E/D/F/T/G/Y/H/U/J/K computer keys and quantized directly into the active beat. Press **Space** to play or stop while Music Maker is active.
+
+## Optional cloud sync setup
+
+Cloud sync is deliberately opt-in. Emojiro does not need a backend for local use.
+
+1. Choose or create a Supabase project.
+2. Run `supabase-cloud-sync.sql` once in that project's SQL Editor.
+3. In Emojiro Paint, open **Projects → Cloud Sync**.
+4. Enter the project's URL and **publishable** key.
+5. Generate a sync code, then use **Push library**.
+6. On another device, enter the same URL, publishable key, and sync code, then choose **Pull & merge**.
+
+The sync code is hashed for row access, and the project-library payload is encrypted in the browser with AES-GCM before upload. Do not use a Supabase secret/service-role key in the browser.
 
 ## Architecture
 
@@ -130,8 +155,9 @@ The project intentionally remains plain HTML, CSS, and JavaScript:
 - `styles.css` — shared responsive retro UI
 - `paint-plus.css` — custom stamp and animation UI
 - `composer.css` — expanded music composer UI
-- `project-library.css` — named project and autosave UI
-- `app.js` — painting, stamps, animation, Web Audio synthesis, sequencing, and persistence
+- `project-library.css` — named project, autosave, and optional cloud-sync UI
+- `toybox.css` — title toy and mini-game UI
+- `app.js` — painting, stamps, animation, Web Audio synthesis, sequencing, persistence, cloud encryption/sync, and mini-games
 - `manifest.webmanifest` — installable app metadata
 - `favicon.svg` — original Emojiro icon
 - `sw.js` — offline service worker
@@ -140,11 +166,11 @@ The project intentionally remains plain HTML, CSS, and JavaScript:
 
 ## Next milestones
 
-- Section-level instrument palettes and mixer snapshots
-- Optional share-link compression for very dense songs
-- Section-level mixer snapshots and instrument palettes
-- Cloud-sync option for project libraries
-- Original mini-games and interactive title-screen toys
+- Per-section automation curves for mixer/effects
+- More Toy Box games and unlockable cosmetic toys
+- Project thumbnails and search/filtering in the library
+- Optional authenticated cloud accounts in addition to sync-code mode
+- Shareable full-project links for small projects
 
 ## Browser notes
 
