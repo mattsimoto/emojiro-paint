@@ -1,4 +1,4 @@
-const CACHE_NAME = "emojiro-paint-v11";
+const CACHE_NAME = "emojiro-paint-v12";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -7,6 +7,7 @@ const APP_SHELL = [
   "./paint-plus.css",
   "./project-library.css",
   "./toybox.css",
+  "./upcycle-theme.css",
   "./app.js",
   "./manifest.webmanifest",
   "./favicon.svg"
