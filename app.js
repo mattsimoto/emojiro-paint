@@ -1170,6 +1170,8 @@
   let selectedSection = 0;
   let sectionNames = ["Section A", "Section B", "Section C", "Section D"];
   let sectionTempoOverrides = Array(SECTION_COUNT).fill(null);
+  let sectionInstrumentPalettes = Array(SECTION_COUNT).fill(null);
+  let sectionMixerSnapshots = Array(SECTION_COUNT).fill(null);
   let humanizeMs = 0;
   let percussionPattern = null;
   let sectionClipboard = null;
@@ -1364,6 +1366,34 @@
     }
   }
 
+  function sectionPaletteAllows(id, section = selectedSection) {
+    const palette = sectionInstrumentPalettes[section];
+    return !Array.isArray(palette) || palette.includes(id);
+  }
+
+  function mixerForStep(step) {
+    const section = Math.max(0, Math.min(SECTION_COUNT - 1, Math.floor(step / SECTION_LENGTH)));
+    const snapshot = sectionMixerSnapshots[section];
+    return snapshot && typeof snapshot === "object" ? snapshot : instrumentMix;
+  }
+
+  function normalizeMixerSnapshot(snapshot) {
+    if (!snapshot || typeof snapshot !== "object") return null;
+    const out = {};
+    INSTRUMENTS.forEach((instrument) => {
+      const saved = snapshot[instrument.id] || {};
+      out[instrument.id] = {
+        volume: Number.isFinite(Number(saved.volume)) ? Math.max(0, Math.min(1, Number(saved.volume))) : 1,
+        mute: Boolean(saved.mute),
+        solo: Boolean(saved.solo),
+        pan: Number.isFinite(Number(saved.pan)) ? Math.max(-1, Math.min(1, Number(saved.pan))) : 0,
+        filter: Number.isFinite(Number(saved.filter)) ? Math.max(0, Math.min(1, Number(saved.filter))) : 0,
+        delay: Number.isFinite(Number(saved.delay)) ? Math.max(0, Math.min(1, Number(saved.delay))) : 0
+      };
+    });
+    return out;
+  }
+
   function instrumentById(id) {
     return INSTRUMENTS.find((instrument) => instrument.id === id);
   }
@@ -1472,15 +1502,16 @@
     src.start(when);
   }
 
-  function playInstrument(id, frequency, duration = .28, when) {
+  function playInstrument(id, frequency, duration = .28, when, mixerOverride = null) {
     const ac = ensureAudio();
     const start = when == null ? ac.currentTime : when;
     const instrument = instrumentById(id);
     if (!instrument) return;
-    const mix = instrumentMix[id] || {
+    const mixer = mixerOverride || instrumentMix;
+    const mix = mixer[id] || {
       volume: 1, mute: false, solo: false, pan: 0, filter: 0, delay: 0
     };
-    const anySolo = Object.values(instrumentMix).some((entry) => entry && entry.solo);
+    const anySolo = Object.values(mixer).some((entry) => entry && entry.solo);
     if (mix.mute || (anySolo && !mix.solo) || Number(mix.volume) <= 0) return;
     const previousMixMultiplier = activeMixMultiplier;
     const previousMixPan = activeMixPan;
@@ -1685,12 +1716,23 @@
   function renderInstrumentBank() {
     const bank = $("#instrumentBank");
     bank.innerHTML = "";
+
+    if (!sectionPaletteAllows(selectedInstrument)) {
+      const firstAllowed = INSTRUMENTS.find((instrument) => sectionPaletteAllows(instrument.id));
+      if (firstAllowed) selectedInstrument = firstAllowed.id;
+    }
+
     INSTRUMENTS.forEach((instrument) => {
+      const allowed = sectionPaletteAllows(instrument.id);
       const button = document.createElement("button");
       button.type = "button";
-      button.className = "instrument-button" + (instrument.id === selectedInstrument ? " active" : "");
+      button.disabled = !allowed;
+      button.className = "instrument-button" +
+        (instrument.id === selectedInstrument ? " active" : "") +
+        (!allowed ? " section-disabled" : "");
       button.innerHTML = '<span class="emoji">' + instrument.emoji + "</span>" + instrument.name;
       button.addEventListener("click", () => {
+        if (!sectionPaletteAllows(instrument.id)) return;
         selectedInstrument = instrument.id;
         renderInstrumentBank();
         playInstrument(instrument.id, 440, .22);
@@ -1698,6 +1740,77 @@
       bank.appendChild(button);
     });
   }
+
+  function renderSectionSoundSettings() {
+    const palette = $("#sectionInstrumentPalette");
+    if (!palette) return;
+    palette.innerHTML = "";
+    const configured = sectionInstrumentPalettes[selectedSection];
+
+    INSTRUMENTS.forEach((instrument) => {
+      const active = !Array.isArray(configured) || configured.includes(instrument.id);
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "section-palette-chip" + (active ? " active" : "");
+      button.innerHTML = '<span class="emoji">' + instrument.emoji + "</span>" + instrument.name;
+      button.setAttribute("aria-pressed", String(active));
+      button.addEventListener("click", () => {
+        pushMusicHistory();
+        let next = Array.isArray(sectionInstrumentPalettes[selectedSection])
+          ? sectionInstrumentPalettes[selectedSection].slice()
+          : INSTRUMENTS.map((item) => item.id);
+
+        if (next.includes(instrument.id)) {
+          if (next.length <= 1) return toast("A section palette needs at least one instrument");
+          next = next.filter((id) => id !== instrument.id);
+        } else {
+          next.push(instrument.id);
+        }
+        sectionInstrumentPalettes[selectedSection] = next;
+        renderSectionSoundSettings();
+        renderInstrumentBank();
+      });
+      palette.appendChild(button);
+    });
+
+    const snapshot = sectionMixerSnapshots[selectedSection];
+    $("#sectionMixStatus").textContent = snapshot ? "Snapshot active for this section" : "Using global mixer";
+    $("#recallSectionMixBtn").disabled = !snapshot;
+    $("#clearSectionMixBtn").disabled = !snapshot;
+  }
+
+  $("#sectionPaletteAllBtn").addEventListener("click", () => {
+    pushMusicHistory();
+    sectionInstrumentPalettes[selectedSection] = null;
+    renderSectionSoundSettings();
+    renderInstrumentBank();
+  });
+
+  $("#saveSectionMixBtn").addEventListener("click", () => {
+    pushMusicHistory();
+    sectionMixerSnapshots[selectedSection] = deepClone(instrumentMix);
+    renderSectionSoundSettings();
+    renderSectionBar();
+    toast("Mixer snapshot saved for section");
+  });
+
+  $("#recallSectionMixBtn").addEventListener("click", () => {
+    const snapshot = sectionMixerSnapshots[selectedSection];
+    if (!snapshot) return;
+    pushMusicHistory();
+    instrumentMix = deepClone(snapshot);
+    renderInstrumentMixer();
+    toast("Section mixer recalled");
+  });
+
+  $("#clearSectionMixBtn").addEventListener("click", () => {
+    if (!sectionMixerSnapshots[selectedSection]) return;
+    pushMusicHistory();
+    sectionMixerSnapshots[selectedSection] = null;
+    renderSectionSoundSettings();
+    renderSectionBar();
+    toast("Section mixer snapshot cleared");
+  });
 
   function noteCountAtStep(step) {
     let count = 0;
@@ -1715,6 +1828,8 @@
       loopMusic,
       sectionNames: sectionNames.slice(),
       sectionTempoOverrides: sectionTempoOverrides.slice(),
+      sectionInstrumentPalettes: deepClone(sectionInstrumentPalettes),
+      sectionMixerSnapshots: deepClone(sectionMixerSnapshots),
       percussionPattern: deepClone(percussionPattern),
       humanizeMs,
       instrumentMix: deepClone(instrumentMix)
@@ -1790,6 +1905,8 @@
     $("#duplicateSectionBtn").disabled = selectedSection === SECTION_COUNT - 1;
     $("#variationSectionBtn").disabled = selectedSection === SECTION_COUNT - 1;
     syncSectionTempoUi();
+    renderSectionSoundSettings();
+    renderInstrumentBank();
     renderArrangementOverview();
   }
 
@@ -1809,6 +1926,8 @@
       rows: sequence.map((row) => row.slice(start, start + SECTION_LENGTH)),
       percussion: percussionPattern.map((lane) => lane.slice(start, start + SECTION_LENGTH)),
       tempo: sectionTempoOverrides[index],
+      palette: deepClone(sectionInstrumentPalettes[index]),
+      mixerSnapshot: deepClone(sectionMixerSnapshots[index]),
       name: sectionNames[index]
     };
   }
@@ -1830,6 +1949,12 @@
     }
     if (data && Object.prototype.hasOwnProperty.call(data, "tempo")) {
       sectionTempoOverrides[index] = data.tempo == null ? null : Number(data.tempo);
+    }
+    if (data && Object.prototype.hasOwnProperty.call(data, "palette")) {
+      sectionInstrumentPalettes[index] = Array.isArray(data.palette) ? data.palette.filter((id) => instrumentById(id)) : null;
+    }
+    if (data && Object.prototype.hasOwnProperty.call(data, "mixerSnapshot")) {
+      sectionMixerSnapshots[index] = normalizeMixerSnapshot(data.mixerSnapshot);
     }
   }
 
@@ -1907,7 +2032,9 @@
     pasteSectionData(selectedSection, {
       rows: Array.from({ length: PITCHES.length }, () => Array(SECTION_LENGTH).fill(null)),
       percussion: Array.from({ length: PERCUSSION_LANES.length }, () => Array(SECTION_LENGTH).fill(false)),
-      tempo: sectionTempoOverrides[selectedSection]
+      tempo: sectionTempoOverrides[selectedSection],
+      palette: deepClone(sectionInstrumentPalettes[selectedSection]),
+      mixerSnapshot: deepClone(sectionMixerSnapshots[selectedSection])
     });
     renderPercussionGrid();
     renderSequencer();
@@ -2469,20 +2596,21 @@
     const beatDuration = 60 / bpm;
     const ac = ensureAudio();
     const now = ac.currentTime + .01;
+    const stepMixer = mixerForStep(step);
     $("#tempoReadout").textContent = bpm;
 
     PITCHES.forEach((pitch, row) => {
       const id = sequence[row][step];
       if (id) {
         const when = now + humanizeOffsetMs(row, step) / 1000;
-        playInstrument(id, noteToFrequency(pitch), Math.min(.55, beatDuration * .82), when);
+        playInstrument(id, noteToFrequency(pitch), Math.min(.55, beatDuration * .82), when, stepMixer);
       }
     });
 
     PERCUSSION_LANES.forEach((lane, laneIndex) => {
       if (!percussionPattern[laneIndex][step]) return;
       const when = now + humanizeOffsetMs(PITCHES.length + laneIndex, step) / 1000;
-      playInstrument(lane.instrument, noteToFrequency(lane.pitch), Math.min(.45, beatDuration * .72), when);
+      playInstrument(lane.instrument, noteToFrequency(lane.pitch), Math.min(.45, beatDuration * .72), when, stepMixer);
     });
   }
 
@@ -2620,6 +2748,17 @@
     loopMusic = previous.loopMusic;
     if (Array.isArray(previous.sectionNames)) sectionNames = previous.sectionNames.slice(0, SECTION_COUNT);
     if (Array.isArray(previous.sectionTempoOverrides)) sectionTempoOverrides = previous.sectionTempoOverrides.slice(0, SECTION_COUNT);
+    if (Array.isArray(previous.sectionInstrumentPalettes)) {
+      sectionInstrumentPalettes = Array.from({ length: SECTION_COUNT }, (_, index) => {
+        const value = previous.sectionInstrumentPalettes[index];
+        return Array.isArray(value) ? value.filter((id) => instrumentById(id)) : null;
+      });
+    }
+    if (Array.isArray(previous.sectionMixerSnapshots)) {
+      sectionMixerSnapshots = Array.from({ length: SECTION_COUNT }, (_, index) =>
+        normalizeMixerSnapshot(previous.sectionMixerSnapshots[index])
+      );
+    }
     if (Array.isArray(previous.percussionPattern)) percussionPattern = normalizePercussion(previous.percussionPattern);
     if (Number.isFinite(previous.humanizeMs)) humanizeMs = previous.humanizeMs;
     if (previous.instrumentMix) instrumentMix = deepClone(previous.instrumentMix);
@@ -2851,7 +2990,7 @@
 
     return {
       format: "emojiro-paint-song",
-      version: 7,
+      version: 8,
       name: String(compact.n || "Shared Emoji Song").slice(0, 40),
       tempo: Math.max(40, Math.min(480, Number(compact.t) || 120)),
       timeSignature: Number(compact.m) === 3 ? 3 : 4,
@@ -2905,6 +3044,8 @@
       maxLayersPerBeat: MAX_LAYERS,
       sections: sectionNames.slice(),
       sectionTempoOverrides: sectionTempoOverrides.slice(),
+      sectionInstrumentPalettes: deepClone(sectionInstrumentPalettes),
+      sectionMixerSnapshots: deepClone(sectionMixerSnapshots),
       percussion: percussionPattern,
       humanizeMs,
       sectionLoop: sectionLoopEnabled,
@@ -2955,6 +3096,14 @@
           return value >= 40 && value <= 480 ? value : null;
         })
       : Array(SECTION_COUNT).fill(null);
+    sectionInstrumentPalettes = Array.from({ length: SECTION_COUNT }, (_, index) => {
+      const value = Array.isArray(song.sectionInstrumentPalettes) ? song.sectionInstrumentPalettes[index] : null;
+      return Array.isArray(value) ? value.filter((id) => instrumentById(id)) : null;
+    });
+    sectionMixerSnapshots = Array.from({ length: SECTION_COUNT }, (_, index) => {
+      const value = Array.isArray(song.sectionMixerSnapshots) ? song.sectionMixerSnapshots[index] : null;
+      return normalizeMixerSnapshot(value);
+    });
     percussionPattern = normalizePercussion(song.percussion);
     humanizeMs = Math.max(0, Math.min(60, Number(song.humanizeMs) || 0));
     $("#humanizeSlider").value = humanizeMs;
@@ -3706,7 +3855,7 @@
   function projectPayload() {
     return {
       format: "emojiro-paint-project",
-      version: 7,
+      version: 8,
       name: ($("#projectNameInput").value || "Untitled Emojiro Project").trim().slice(0, 40),
       savedAt: new Date().toISOString(),
       paint: {
@@ -3813,7 +3962,7 @@
     );
     return {
       format: "emojiro-paint-project",
-      version: 7,
+      version: 8,
       name: "Untitled Emojiro Project",
       savedAt: new Date().toISOString(),
       paint: {
@@ -3831,7 +3980,7 @@
       },
       music: {
         format: "emojiro-paint-song",
-        version: 7,
+        version: 8,
         name: "My Emoji Song",
         tempo: 120,
         timeSignature: 4,
@@ -3842,6 +3991,8 @@
         maxLayersPerBeat: MAX_LAYERS,
         sections: ["Section A", "Section B", "Section C", "Section D"],
         sectionTempoOverrides: [null, null, null, null],
+        sectionInstrumentPalettes: [null, null, null, null],
+        sectionMixerSnapshots: [null, null, null, null],
         percussion: makePercussionPattern(),
         humanizeMs: 0,
         sectionLoop: false,
@@ -4145,6 +4296,7 @@
   renderFrameList();
   renderInstrumentBank();
   renderSectionBar();
+  renderSectionSoundSettings();
   renderPercussionGrid();
   renderInstrumentMixer();
   updateComposerButtons();
