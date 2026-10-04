@@ -5,9 +5,8 @@
 .title-toy-button {
   position: relative;
   z-index: 3;
-  border: 0;
   cursor: pointer;
-  font: inherit;
+  font-family: inherit;
 }
 
 .title-toy-stage {
