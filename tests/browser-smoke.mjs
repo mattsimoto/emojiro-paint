@@ -54,6 +54,34 @@ async function desktopSmoke(browser) {
   const page = await context.newPage();
   await loadApp(page, errors);
 
+  const headerGeometry = await page.evaluate(() => {
+    const theme = document.querySelector("#themeToggleBtn");
+    const projects = document.querySelector("#projectsBtn");
+    const themeIcon = theme?.querySelector(".theme-toggle-icon");
+    const projectIcon = projects?.querySelector(".header-icon-glyph");
+    const rect = (el) => el ? el.getBoundingClientRect() : null;
+    const centerDelta = (button, icon) => {
+      const b = rect(button);
+      const i = rect(icon);
+      if (!b || !i) return 999;
+      const bx = b.left + b.width / 2;
+      const by = b.top + b.height / 2;
+      const ix = i.left + i.width / 2;
+      const iy = i.top + i.height / 2;
+      return Math.max(Math.abs(bx - ix), Math.abs(by - iy));
+    };
+    return {
+      theme: rect(theme),
+      projects: rect(projects),
+      themeCenterDelta: centerDelta(theme, themeIcon),
+      projectCenterDelta: centerDelta(projects, projectIcon)
+    };
+  });
+  assert(Math.abs(headerGeometry.theme.width - headerGeometry.projects.width) <= 1, "Header utility buttons should share the same diameter");
+  assert(Math.abs(headerGeometry.theme.height - headerGeometry.projects.height) <= 1, "Header utility buttons should share the same height");
+  assert(headerGeometry.themeCenterDelta <= 2.5, "Theme icon should be centered in its circle");
+  assert(headerGeometry.projectCenterDelta <= 2.5, "Projects icon should be centered in its circle");
+
   assert.equal(await page.locator("#musicPanel").isVisible(), true, "Music Maker should be the default screen");
   assert.equal(await page.locator("#paintPanel").isVisible(), false, "Visual tools should start out of the way");
   assert.equal(await page.locator("#arrangementOverview").isVisible(), false, "Advanced music cards should start collapsed");
@@ -232,6 +260,26 @@ async function mobileSmoke(browser) {
   const response = await page.goto(BASE_URL, { waitUntil: "networkidle" });
   assert(response && response.ok(), "Mobile app load failed");
   await page.waitForSelector("#musicPanel.active");
+  const mobileHeaderGeometry = await page.evaluate(() => {
+    const header = document.querySelector(".topbar").getBoundingClientRect();
+    const actions = document.querySelector(".top-actions").getBoundingClientRect();
+    const theme = document.querySelector("#themeToggleBtn").getBoundingClientRect();
+    const projects = document.querySelector("#projectsBtn").getBoundingClientRect();
+    return {
+      headerRight: header.right,
+      viewport: document.documentElement.clientWidth,
+      actionsTop: actions.top,
+      actionsBottom: actions.bottom,
+      themeWidth: theme.width,
+      themeHeight: theme.height,
+      projectsWidth: projects.width,
+      projectsHeight: projects.height
+    };
+  });
+  assert(mobileHeaderGeometry.headerRight <= mobileHeaderGeometry.viewport + 1, "Mobile header should fit inside the viewport");
+  assert(Math.abs(mobileHeaderGeometry.themeWidth - mobileHeaderGeometry.projectsWidth) <= 1, "Mobile header circles should have equal width");
+  assert(Math.abs(mobileHeaderGeometry.themeHeight - mobileHeaderGeometry.projectsHeight) <= 1, "Mobile header circles should have equal height");
+
   assert.equal(await page.locator("#musicPanel").isVisible(), true, "Mobile should open directly to Music");
   assert.equal(await page.locator("#paintPanel").isVisible(), false, "Mobile visual tools should be secondary");
 
