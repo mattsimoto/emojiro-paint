@@ -161,6 +161,7 @@ The project intentionally remains plain HTML, CSS, and JavaScript:
 - `manifest.webmanifest` — installable app metadata
 - `favicon.svg` — original Emojiro icon
 - `sw.js` — offline service worker
+- `supabase-cloud-sync.sql` — optional encrypted cloud-sync table, grants, and RLS setup
 - `tests/validate.mjs` — DOM/control smoke validation
 - `.github/workflows/validate.yml` — syntax, smoke, and required-file validation
 
