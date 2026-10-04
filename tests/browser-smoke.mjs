@@ -63,11 +63,11 @@ async function desktopSmoke(browser) {
   await page.click("#musicToolsToggle");
   assert.equal(await page.locator("#musicToolsToggle").getAttribute("aria-pressed"), "true", "Tools button should reveal advanced controls");
 
-  assert.equal(await page.locator("#instrumentBank button").count(), 15, "All 15 instruments should render");
+  assert.equal(await page.locator("#instrumentBank button").count(), 43, "All 43 instruments should render");
   assert.equal(await page.locator("#arrangementOverview .arrangement-card").count(), 4, "Song Map should show four sections");
   assert.equal(await page.locator("#percussionGrid .percussion-cell").count(), 96, "Selected section should show four 24-beat percussion lanes");
   assert.equal(await page.locator("#liveKeyboard .live-key").count(), 13, "Live Keys should span 13 notes");
-  assert.equal(await page.locator("#sectionInstrumentPalette .section-palette-chip").count(), 15, "Section palette should show all instruments");
+  assert.equal(await page.locator("#sectionInstrumentPalette .section-palette-chip").count(), 43, "Section palette should show all instruments");
 
   await page.locator("#sectionInstrumentPalette .section-palette-chip").first().click();
   assert.equal(await page.locator("#instrumentBank .instrument-button").first().isDisabled(), true, "Section palette should constrain the instrument bank");
