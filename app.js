@@ -2060,7 +2060,7 @@
       button.className = "instrument-button" +
         (instrument.id === selectedInstrument ? " active" : "") +
         (!allowed ? " section-disabled" : "");
-      button.innerHTML = '<span class="emoji">' + instrument.emoji + "</span><span class="instrument-name">' + instrument.name + "</span>";
+      button.innerHTML = '<span class="emoji">' + instrument.emoji + '</span><span class="instrument-name">' + instrument.name + '</span>';
       button.setAttribute("aria-label", instrument.name);
       button.title = instrument.name;
       button.addEventListener("click", () => {
