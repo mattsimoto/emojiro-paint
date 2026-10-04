@@ -1182,3 +1182,279 @@
     justify-content: flex-start;
   }
 }
+
+
+/* Simplified music workspace */
+.music-panel {
+  min-width: 0;
+}
+
+.music-panel .card {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.music-panel:not(.show-advanced) .advanced-control,
+.music-panel:not(.show-advanced) .composer-options,
+.music-panel:not(.show-advanced) .section-editor-head,
+.music-panel:not(.show-advanced) .section-settings,
+.music-panel:not(.show-advanced) .section-sound-settings,
+.music-panel:not(.show-advanced) .section-actions,
+.music-panel:not(.show-advanced) .arrangement-overview,
+.music-panel:not(.show-advanced) .measure-editor,
+.music-panel:not(.show-advanced) .mixer-card,
+.music-panel:not(.show-advanced) .composer-demo,
+.music-panel:not(.show-advanced) .composer-assist,
+.music-panel:not(.show-advanced) .performance-tools,
+.music-panel:not(.show-advanced) .pattern-lab,
+.music-panel:not(.show-advanced) .percussion-card,
+.music-panel:not(.show-advanced) .composer-view,
+.music-panel:not(.show-advanced) .song-actions {
+  display: none !important;
+}
+
+.music-panel:not(.show-advanced) .music-toolbar {
+  grid-template-columns: auto minmax(220px, 1fr);
+  align-items: center;
+}
+
+.music-panel:not(.show-advanced) .section-editor {
+  padding: 9px;
+  margin-bottom: 10px;
+}
+
+.music-panel:not(.show-advanced) .instrument-card {
+  padding: 9px;
+  margin-bottom: 10px;
+}
+
+.music-panel:not(.show-advanced) .instrument-card .section-title-row {
+  margin-bottom: 7px;
+}
+
+.music-panel:not(.show-advanced) .instrument-card .section-title-row p,
+.music-panel:not(.show-advanced) #auditionBtn {
+  display: none;
+}
+
+.music-panel:not(.show-advanced) .instrument-card h3 {
+  margin: 0;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+
+.music-tools-toggle {
+  background: #fff;
+}
+
+.music-tools-toggle[aria-pressed="true"] {
+  background: var(--yellow);
+  outline: 2px solid var(--orange);
+  outline-offset: 1px;
+}
+
+.sequencer-scroll {
+  max-width: 100%;
+  overflow: auto;
+  overscroll-behavior-inline: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.seq-label,
+.seq-corner {
+  position: sticky;
+  left: 0;
+  z-index: 9;
+}
+
+.seq-label {
+  background: var(--panel);
+  box-shadow: 2px 0 0 rgba(45,42,50,.15);
+}
+
+@media (max-width: 640px) {
+  .music-panel .panel-heading {
+    margin-inline: 0;
+  }
+
+  .music-toolbar,
+  .music-panel:not(.show-advanced) .music-toolbar {
+    position: sticky;
+    top: 4px;
+    z-index: 25;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    margin-bottom: 9px;
+    padding: 8px;
+  }
+
+  .music-toolbar .transport {
+    display: grid;
+    grid-template-columns: minmax(92px, 1fr) auto auto;
+    gap: 6px;
+  }
+
+  .music-panel:not(.show-advanced) .transport .advanced-control {
+    display: none !important;
+  }
+
+  #playMusicBtn,
+  #undoMusicBtn,
+  #musicToolsToggle {
+    min-height: 42px;
+    padding: 7px 10px;
+  }
+
+  #playMusicBtn {
+    font-size: 14px;
+  }
+
+  .tempo-row {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 7px;
+    margin: 0;
+    align-items: center;
+  }
+
+  .tempo-row input {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .section-editor {
+    margin-bottom: 9px;
+  }
+
+  .section-bar {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 4px;
+  }
+
+  .section-button {
+    min-width: 0;
+    min-height: 42px;
+    padding: 6px 3px;
+    overflow: hidden;
+    font-size: 10px;
+    line-height: 1.1;
+    text-overflow: ellipsis;
+  }
+
+  .music-panel:not(.show-advanced) .section-button span {
+    display: none;
+  }
+
+  .instrument-bank {
+    display: flex !important;
+    grid-template-columns: none !important;
+    flex-wrap: nowrap;
+    gap: 6px;
+    max-width: 100%;
+    overflow-x: auto;
+    padding: 3px 2px 6px;
+    scrollbar-width: thin;
+    scroll-snap-type: x proximity;
+  }
+
+  .instrument-button {
+    flex: 0 0 50px;
+    min-width: 50px;
+    min-height: 48px;
+    padding: 4px;
+    scroll-snap-align: start;
+    font-size: 0;
+  }
+
+  .instrument-button .emoji {
+    display: block;
+    margin: 0;
+    font-size: 25px;
+  }
+
+  .instrument-button .instrument-name {
+    display: none;
+  }
+
+  .sequencer-card {
+    margin-bottom: 10px;
+    padding: 7px 4px 8px;
+    border-radius: 12px;
+  }
+
+  .playhead-strip {
+    height: 23px;
+    margin: -1px 3px 4px 46px;
+  }
+
+  #runner {
+    font-size: 20px;
+  }
+
+  .sequencer,
+  .sequencer.compact {
+    --cell: 27px !important;
+    grid-template-columns: 44px repeat(96, var(--cell)) !important;
+  }
+
+  .sequencer .seq-label,
+  .sequencer.compact .seq-label {
+    width: 44px;
+    padding-inline: 2px;
+    font-size: 9px;
+  }
+
+  .sequencer .seq-cell,
+  .sequencer.compact .seq-cell {
+    min-width: 27px;
+    font-size: 16px;
+  }
+
+  .sequencer .seq-step,
+  .sequencer.compact .seq-step {
+    min-width: 27px;
+    font-size: 8px;
+  }
+
+  .music-hint {
+    display: none;
+  }
+
+  .music-panel.show-advanced .arrangement-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .music-panel.show-advanced .section-sound-settings,
+  .music-panel.show-advanced .instrument-mixer {
+    grid-template-columns: 1fr;
+  }
+
+  .music-panel.show-advanced .song-action-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .music-panel.show-advanced .song-action-buttons > * {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 390px) {
+  .sequencer,
+  .sequencer.compact {
+    --cell: 25px !important;
+    grid-template-columns: 42px repeat(96, var(--cell)) !important;
+  }
+
+  .sequencer .seq-label,
+  .sequencer.compact .seq-label {
+    width: 42px;
+  }
+
+  .instrument-button {
+    flex-basis: 47px;
+    min-width: 47px;
+  }
+}
