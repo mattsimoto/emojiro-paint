@@ -140,10 +140,10 @@
     area.remove();
   }
 
-  $(".mode-tab[data-panel]").forEach((button) => {
+  $$(".mode-tab[data-panel]").forEach((button) => {
     button.addEventListener("click", () => {
-      $(".mode-tab[data-panel]").forEach((tab) => tab.classList.toggle("active", tab === button));
-      $(".panel").forEach((panel) => panel.classList.toggle("active", panel.id === button.dataset.panel));
+      $$(".mode-tab[data-panel]").forEach((tab) => tab.classList.toggle("active", tab === button));
+      $$(".panel").forEach((panel) => panel.classList.toggle("active", panel.id === button.dataset.panel));
       const moreMenu = $("#moreModeMenu");
       if (moreMenu) moreMenu.open = false;
       if (button.dataset.panel !== "musicPanel") stopMusic();
