@@ -94,6 +94,9 @@ const requiredIds = [
   "startCatchGameBtn",
   "rhythmRelayBoard",
   "startRelayBtn",
+  "musicToolsToggle",
+  "moreModeMenu",
+  "mobileProjectsBtn",
   "sequencer"
 ];
 
@@ -113,6 +116,7 @@ const requiredJsMarkers = [
   "function effectiveTempoAtStep",
   "function renderPercussionGrid",
   "function renderArrangementOverview",
+  "function mobileSectionComposer",
   "sectionTempoOverrides",
   "percussionPattern",
   "humanizeMs",
