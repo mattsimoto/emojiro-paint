@@ -614,3 +614,149 @@ output {
   .instrument-bank { grid-template-columns: repeat(4, 1fr); }
   .range-row { grid-template-columns: 67px 1fr 55px; }
 }
+
+
+/* Simplified app navigation */
+.legacy-quick-save {
+  display: none;
+}
+
+.primary-nav {
+  position: relative;
+  overflow: visible;
+  align-items: center;
+  gap: 8px;
+}
+
+.music-home-tab {
+  min-width: 120px;
+}
+
+.more-mode-menu {
+  position: relative;
+}
+
+.more-mode-menu > summary {
+  list-style: none;
+  cursor: pointer;
+  border: var(--border);
+  border-radius: 999px;
+  padding: 10px 16px;
+  background: #fff;
+  font-weight: 800;
+  box-shadow: 0 4px 0 var(--ink);
+  user-select: none;
+}
+
+.more-mode-menu > summary::-webkit-details-marker {
+  display: none;
+}
+
+.more-mode-menu-popover {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 8px);
+  left: 0;
+  display: grid;
+  min-width: 190px;
+  gap: 7px;
+  padding: 9px;
+  border: var(--border);
+  border-radius: 14px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.more-mode-menu-popover .mode-tab {
+  width: 100%;
+  text-align: left;
+  box-shadow: none;
+  border-radius: 10px;
+}
+
+@media (max-width: 640px) {
+  .app-shell {
+    width: min(100% - 14px, 1180px);
+    padding-top: 8px;
+  }
+
+  .topbar {
+    align-items: center;
+    gap: 8px;
+  }
+
+  .brand {
+    min-width: 0;
+    gap: 8px;
+  }
+
+  .brand-mark {
+    width: 42px;
+    border-radius: 12px;
+    font-size: 23px;
+    box-shadow: 3px 3px 0 var(--ink);
+  }
+
+  .brand h1 {
+    font-size: 22px;
+  }
+
+  .brand p {
+    display: none;
+  }
+
+  .top-actions {
+    margin-left: auto;
+    flex: 0 0 auto;
+  }
+
+  #autosaveStatus {
+    display: none;
+  }
+
+  #projectsBtn {
+    padding-inline: 10px;
+    font-size: 0;
+  }
+
+  #projectsBtn::before {
+    content: "🗃️";
+    font-size: 18px;
+  }
+
+  .primary-nav {
+    margin: 8px 0 12px;
+    padding: 0;
+    overflow: visible;
+  }
+
+  .primary-nav > .mode-tab,
+  .more-mode-menu > summary {
+    padding: 8px 13px;
+    min-height: 38px;
+  }
+
+  .more-mode-menu-popover {
+    right: 0;
+    left: auto;
+    min-width: 180px;
+  }
+
+  .panel-heading {
+    align-items: center;
+    margin-bottom: 8px;
+  }
+
+  .panel-heading h2 {
+    font-size: 21px;
+  }
+
+  .panel-heading p {
+    display: none;
+  }
+
+  .status-pill {
+    padding: 5px 8px;
+    font-size: 11px;
+  }
+}
