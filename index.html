@@ -12,12 +12,14 @@
   <link rel="stylesheet" href="composer.css" />
   <link rel="stylesheet" href="paint-plus.css" />
   <link rel="stylesheet" href="project-library.css" />
+  <link rel="stylesheet" href="toybox.css" />
 </head>
 <body>
   <div class="app-shell">
     <header class="topbar">
       <div class="brand" aria-label="Emojiro Paint">
-        <span class="brand-mark" aria-hidden="true">🎨</span>
+        <button id="titleToyBtn" class="brand-mark title-toy-button" type="button" aria-label="Play with the Emojiro title">🎨</button>
+        <div id="titleToyStage" class="title-toy-stage" aria-hidden="true"></div>
         <div>
           <h1>Emojiro Paint</h1>
           <p>draw it • stamp it • play it</p>
@@ -34,6 +36,7 @@
     <nav class="mode-tabs" aria-label="Main modes">
       <button class="mode-tab active" data-panel="paintPanel" type="button">🎨 Paint Studio</button>
       <button class="mode-tab" data-panel="musicPanel" type="button">🎵 Music Maker</button>
+      <button class="mode-tab" data-panel="toyPanel" type="button">🕹️ Toy Box</button>
       <button class="mode-tab" data-panel="aboutPanel" type="button">📼 About</button>
     </nav>
 
@@ -221,6 +224,29 @@
               <input id="sectionTempoSlider" type="range" min="40" max="480" value="120" disabled />
               <output id="sectionTempoOut">Global 120</output>
             </label>
+          </div>
+          <div class="section-sound-settings">
+            <div class="section-palette-editor">
+              <div class="section-setting-head">
+                <div>
+                  <strong>Section instrument palette</strong>
+                  <span>Limit this section to a focused set of emoji instruments.</span>
+                </div>
+                <button id="sectionPaletteAllBtn" class="button small" type="button">All instruments</button>
+              </div>
+              <div id="sectionInstrumentPalette" class="section-instrument-palette" aria-label="Section instrument palette"></div>
+            </div>
+            <div class="section-mix-snapshot">
+              <div>
+                <strong>Mixer snapshot</strong>
+                <span id="sectionMixStatus">Using global mixer</span>
+              </div>
+              <div class="section-mix-buttons">
+                <button id="saveSectionMixBtn" class="button small primary" type="button">📸 Save snapshot</button>
+                <button id="recallSectionMixBtn" class="button small" type="button">↩ Recall</button>
+                <button id="clearSectionMixBtn" class="button small danger" type="button">Clear</button>
+              </div>
+            </div>
           </div>
           <div class="section-actions">
             <button id="copySectionBtn" class="button small" type="button">📋 Copy</button>
@@ -421,6 +447,7 @@
             <button id="loadSongBtn" class="button" type="button">📂 Load song</button>
             <button id="exportSongBtn" class="button" type="button">⬇️ Export JSON</button>
             <button id="shareSongBtn" class="button" type="button">🔗 Copy song link</button>
+            <label class="check-row share-compress-toggle"><input id="compactShareToggle" type="checkbox" checked /> Compact link</label>
             <button id="exportMidiBtn" class="button" type="button">🎹 Export MIDI</button>
             <button id="exportWavBtn" class="button primary" type="button">🔊 Export WAV</button>
             <label class="button file-button">
@@ -428,6 +455,68 @@
               <input id="importSongInput" type="file" accept=".json,application/json" />
             </label>
           </div>
+        </div>
+      </section>
+
+      <section id="toyPanel" class="panel" aria-labelledby="toyTitle">
+        <div class="panel-heading">
+          <div>
+            <h2 id="toyTitle">Emojiro Toy Box</h2>
+            <p>Original little diversions built from the same emoji-and-sound world.</p>
+          </div>
+          <div class="status-pill">No save data required</div>
+        </div>
+
+        <div class="toy-title-card card">
+          <div>
+            <h3>Title Toy</h3>
+            <p>Make the Emojiro logo spill emoji across the header.</p>
+          </div>
+          <div class="toy-title-actions">
+            <button id="titleBurstBtn" class="button primary" type="button">✨ Burst</button>
+            <button id="titleShuffleBtn" class="button" type="button">🎲 Shuffle</button>
+            <button id="titleClearBtn" class="button" type="button">🧽 Clear</button>
+          </div>
+        </div>
+
+        <div class="toy-grid">
+          <section class="toy-card card">
+            <div class="toy-card-head">
+              <div>
+                <h3>Emoji Catch</h3>
+                <p>Move the basket and catch the good drops. Avoid the troublemakers.</p>
+              </div>
+              <div class="toy-score"><span>Score</span><strong id="catchScore">0</strong></div>
+            </div>
+            <canvas id="catchGameCanvas" width="640" height="360" aria-label="Emoji Catch game"></canvas>
+            <div class="toy-controls">
+              <button id="startCatchGameBtn" class="button primary" type="button">▶ Start</button>
+              <span>Best <strong id="catchBest">0</strong></span>
+              <span id="catchGameStatus">Drag or tap to move the basket.</span>
+            </div>
+          </section>
+
+          <section class="toy-card card">
+            <div class="toy-card-head">
+              <div>
+                <h3>Rhythm Relay</h3>
+                <p>Follow the flashing lane before the beat moves on.</p>
+              </div>
+              <div class="toy-score"><span>Score</span><strong id="relayScore">0</strong></div>
+            </div>
+            <div id="rhythmRelayBoard" class="relay-board" aria-label="Rhythm Relay lanes">
+              <button class="relay-pad" data-lane="0" type="button">⭐</button>
+              <button class="relay-pad" data-lane="1" type="button">🐶</button>
+              <button class="relay-pad" data-lane="2" type="button">🦆</button>
+              <button class="relay-pad" data-lane="3" type="button">🎮</button>
+            </div>
+            <div class="relay-meter" aria-hidden="true"><span id="relayMeter"></span></div>
+            <div class="toy-controls">
+              <button id="startRelayBtn" class="button primary" type="button">▶ Start</button>
+              <span>Best <strong id="relayBest">0</strong></span>
+              <span id="relayStatus">Watch, then tap the lit lane.</span>
+            </div>
+          </section>
         </div>
       </section>
 
@@ -488,6 +577,35 @@
             <input id="importProjectInput" type="file" accept=".json,application/json" />
           </label>
         </div>
+
+        <details class="cloud-sync-card">
+          <summary>☁️ Cloud Sync <span>optional</span></summary>
+          <p>Sync the named-project library through your own Supabase project. Local projects keep working when cloud sync is not configured.</p>
+          <div class="cloud-sync-grid">
+            <label>
+              Supabase project URL
+              <input id="cloudProjectUrl" type="url" placeholder="https://your-project.supabase.co" autocomplete="off" />
+            </label>
+            <label>
+              Publishable key
+              <input id="cloudPublishableKey" type="password" placeholder="sb_publishable_..." autocomplete="off" />
+            </label>
+            <label class="cloud-code-row">
+              Sync code
+              <span>
+                <input id="cloudSyncCode" type="password" placeholder="Generate or paste a sync code" autocomplete="off" />
+                <button id="generateCloudCodeBtn" class="button small" type="button">Generate</button>
+              </span>
+            </label>
+          </div>
+          <div class="cloud-sync-actions">
+            <button id="pushCloudLibraryBtn" class="button small primary" type="button">☁️ Push library</button>
+            <button id="pullCloudLibraryBtn" class="button small" type="button">⬇️ Pull & merge</button>
+            <button id="forgetCloudConfigBtn" class="button small danger" type="button">Forget config</button>
+            <span id="cloudSyncStatus">Not configured</span>
+          </div>
+          <p class="cloud-sync-note">Requires the included <code>supabase-cloud-sync.sql</code> setup in the chosen Supabase project. The library payload is encrypted in the browser before upload.</p>
+        </details>
 
         <div class="project-library-section">
           <div class="project-library-title">
