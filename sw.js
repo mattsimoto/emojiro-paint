@@ -1,4 +1,4 @@
-const CACHE_NAME = "emojiro-paint-v7";
+const CACHE_NAME = "emojiro-paint-v8";
 const APP_SHELL = [
   "./",
   "./index.html",
