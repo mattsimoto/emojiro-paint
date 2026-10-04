@@ -264,8 +264,14 @@ input[type="range"] {
 
 .seq-cell.section-boundary,
 .seq-step.section-boundary {
-  border-left-color: var(--ink);
-  border-left-width: 2px;
+  border-left: 4px solid #f7f0df !important;
+  box-shadow: inset 1px 0 0 rgba(17, 26, 38, .24);
+}
+
+html[data-theme="dark"] .seq-cell.section-boundary,
+html[data-theme="dark"] .seq-step.section-boundary {
+  border-left-color: #f2f4ea !important;
+  box-shadow: inset 1px 0 0 rgba(0, 0, 0, .35);
 }
 
 .seq-step.section-selected {
