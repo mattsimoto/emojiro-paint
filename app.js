@@ -1572,8 +1572,8 @@
   const LIVE_KEYBOARD_KEYS = ["a","w","s","e","d","f","t","g","y","h","u","j","k"];
   const PERCUSSION_LANES = [
     { id: "kick", emoji: "🍄", name: "Kick", instrument: "drum", pitch: "B3", midi: 36 },
-    { id: "clack", emoji: "🚢", name: "Clack", instrument: "ship", pitch: "C4", midi: 38 },
-    { id: "duck", emoji: "🦆", name: "Duck", instrument: "duck", pitch: "G4", midi: 42 },
+    { id: "snare", emoji: "🥁", name: "Snare", instrument: "snare", pitch: "C4", midi: 38 },
+    { id: "tick", emoji: "⏰", name: "Tick", instrument: "clock", pitch: "G4", midi: 42 },
     { id: "zap", emoji: "🎮", name: "Zap", instrument: "game", pitch: "C5", midi: 46 }
   ];
   percussionPattern = makePercussionPattern();
@@ -3876,7 +3876,9 @@
           const tick = step * PPQ + humanTicks;
           const midiNote = instrument.id === "drum"
             ? 36 + ((PITCHES.length - 1 - row) % 12)
-            : noteToMidi(pitch);
+            : instrument.id === "snare"
+              ? 38
+              : noteToMidi(pitch);
           events.push({ tick, order: 3, bytes: [0x90 | channel, midiNote, 100] });
           events.push({ tick: tick + noteLength, order: 2, bytes: [0x80 | channel, midiNote, 0] });
         }
@@ -3943,11 +3945,11 @@
       case "dog": return { wave: "sawtooth", frequency: Math.max(65, frequency / 2), gain: .17, duration: .24, bend: .72, noise: .05 };
       case "cat": return { wave: "sawtooth", frequency, gain: .13, duration: .36, bend: 1.25 };
       case "pig": return { wave: "square", frequency: Math.max(55, frequency * .62), gain: .15, duration: .27, bend: .72, noise: .05 };
-      case "duck": return { wave: "sawtooth", frequency, gain: .14, duration: .2, harmonic: 2 };
+      case "duck": return { wave: "sawtooth", frequency: Math.max(120, frequency * .7), gain: .17, duration: .24, bend: .7, noise: .03 };
       case "baby": return { wave: "sine", frequency: frequency * 1.5, gain: .16, duration: .2, bend: 1.5 };
-      case "plane": return { wave: "triangle", frequency: frequency / 2, gain: .2, duration: .48, harmonic: 2 };
-      case "ship": return { wave: frequency < 440 ? "square" : "sine", frequency: frequency < 440 ? 170 : frequency * 2, gain: .16, duration: .18, noise: frequency < 440 ? .02 : .18 };
-      case "car": return { wave: "square", frequency: frequency * 2, gain: .12, duration: .42, harmonic: 2 };
+      case "plane": return { wave: "sawtooth", frequency: Math.max(55, frequency / 4), gain: .15, duration: .72, harmonic: 1.8, noise: .08 };
+      case "ship": return { wave: "sine", frequency: Math.max(65, frequency / 3), gain: .24, duration: .9, harmonic: 1.5 };
+      case "car": return { wave: "square", frequency: Math.max(180, frequency * .9), gain: .16, duration: .3, harmonic: 1.3 };
       case "heart": return { wave: "sine", frequency: Math.max(42, frequency / 5), gain: .28, duration: .34, harmonic: 1.15 };
       case "frog": return { wave: "square", frequency: Math.max(70, frequency / 2.5), gain: .17, duration: .3, bend: .72, noise: .04 };
       case "cow": return { wave: "sawtooth", frequency: Math.max(65, frequency / 2.4), gain: .16, duration: .62, bend: .82, harmonic: 1.5 };
