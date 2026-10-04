@@ -14,6 +14,26 @@ function trackErrors(page, bucket, label) {
   });
 }
 
+async function controlContrast(page, selector) {
+  return page.locator(selector).first().evaluate((el) => {
+    const parse = (value) => {
+      const match = String(value).match(/[\d.]+/g);
+      return match ? match.slice(0, 3).map(Number) : [0, 0, 0];
+    };
+    const luminance = (rgb) => {
+      const channels = rgb.map((value) => {
+        const c = value / 255;
+        return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+      });
+      return channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722;
+    };
+    const style = getComputedStyle(el);
+    const fg = luminance(parse(style.color));
+    const bg = luminance(parse(style.backgroundColor));
+    return (Math.max(fg, bg) + 0.05) / (Math.min(fg, bg) + 0.05);
+  });
+}
+
 async function loadApp(page, errors) {
   trackErrors(page, errors, "app");
   const response = await page.goto(BASE_URL, { waitUntil: "networkidle" });
@@ -37,6 +57,20 @@ async function desktopSmoke(browser) {
   assert.equal(await page.locator("#musicPanel").isVisible(), true, "Music Maker should be the default screen");
   assert.equal(await page.locator("#paintPanel").isVisible(), false, "Visual tools should start out of the way");
   assert.equal(await page.locator("#arrangementOverview").isVisible(), false, "Advanced music cards should start collapsed");
+
+  await page.click("#themeToggleBtn");
+  assert.equal(await page.locator("html").getAttribute("data-theme"), "dark", "Dark mode should apply on desktop");
+  assert.equal(await page.locator("#themeToggleBtn").getAttribute("aria-pressed"), "true", "Theme toggle should expose dark state");
+  assert.equal(await page.evaluate(() => localStorage.getItem("emojiro-paint-theme-v1")), "dark", "Dark mode should persist locally");
+  for (const selector of ["#playMusicBtn", "#undoMusicBtn", "#themeToggleBtn", "#sectionBar .section-button.active", "#instrumentBank .instrument-button"]) {
+    assert(
+      await controlContrast(page, selector) >= 4.5,
+      selector + " should maintain readable dark-mode contrast"
+    );
+  }
+  await page.reload({ waitUntil: "networkidle" });
+  await page.waitForSelector("#musicPanel.active");
+  assert.equal(await page.locator("html").getAttribute("data-theme"), "dark", "Dark mode should survive reload");
 
   await page.locator("#moreModeMenu summary").click();
   await page.click('.mode-tab[data-panel="paintPanel"]');
@@ -198,6 +232,17 @@ async function mobileSmoke(browser) {
   await page.waitForSelector("#musicPanel.active");
   assert.equal(await page.locator("#musicPanel").isVisible(), true, "Mobile should open directly to Music");
   assert.equal(await page.locator("#paintPanel").isVisible(), false, "Mobile visual tools should be secondary");
+
+  await page.click("#themeToggleBtn");
+  assert.equal(await page.locator("html").getAttribute("data-theme"), "dark", "Mobile dark mode should apply");
+  assert(
+    await controlContrast(page, "#themeToggleBtn") >= 4.5,
+    "Mobile theme toggle should maintain readable dark-mode contrast"
+  );
+  assert(
+    await controlContrast(page, "#playMusicBtn") >= 4.5,
+    "Mobile play button should maintain readable dark-mode contrast"
+  );
   assert.equal(await page.locator("#arrangementOverview .arrangement-card").count(), 4, "Mobile Song Map should render");
   assert.equal(await page.locator("#liveKeyboard .live-key").count(), 13, "Mobile Live Keys should render");
   assert.equal(await page.locator("#arrangementOverview").isVisible(), false, "Mobile advanced cards should stay hidden by default");
