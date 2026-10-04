@@ -1635,3 +1635,62 @@ html[data-theme="dark"] .song-actions {
 html[data-theme="dark"] .toy-title-card { background: #6f3655; }
 html[data-theme="dark"] .toy-card:nth-child(1) { background: #25536a; }
 html[data-theme="dark"] .toy-card:nth-child(2) { background: #4d3b6a; }
+
+
+/* DARK COLOR-BLOCK CONTRAST FIX */
+html[data-theme="dark"] #playMusicBtn {
+  border-color: #dce2d8;
+  background: #8fe0a7;
+  color: #0f1711;
+}
+
+html[data-theme="dark"] #undoMusicBtn {
+  border-color: #dce2d8;
+  background: #f2d857;
+  color: #17150b;
+}
+
+html[data-theme="dark"] #musicToolsToggle {
+  border-color: #dce2d8;
+  background: #d986b6;
+  color: #1c1017;
+}
+
+html[data-theme="dark"] #musicToolsToggle[aria-pressed="true"] {
+  border-color: #dce2d8;
+  background: #b79be0;
+  color: #17121f;
+}
+
+html[data-theme="dark"] #projectsBtn {
+  border-color: #dce2d8;
+  background: #87dca4;
+  color: #101611;
+}
+
+html[data-theme="dark"] .song-actions .button:nth-child(3n + 1),
+html[data-theme="dark"] .song-actions .button:nth-child(3n + 2),
+html[data-theme="dark"] .song-actions .button:nth-child(3n + 3) {
+  color: #111710;
+}
+
+html[data-theme="dark"] .song-actions .button:nth-child(3n + 1) { background: #e9d14f; }
+html[data-theme="dark"] .song-actions .button:nth-child(3n + 2) { background: #7fc9e8; }
+html[data-theme="dark"] .song-actions .button:nth-child(3n + 3) { background: #df8ebe; }
+
+html[data-theme="dark"] .relay-pad:nth-child(1),
+html[data-theme="dark"] .relay-pad:nth-child(2),
+html[data-theme="dark"] .relay-pad:nth-child(3),
+html[data-theme="dark"] .relay-pad:nth-child(4) {
+  color: #10130f;
+}
+
+html[data-theme="dark"] .relay-pad:nth-child(1) { background: #ead652; }
+html[data-theme="dark"] .relay-pad:nth-child(2) { background: #db8db9; }
+html[data-theme="dark"] .relay-pad:nth-child(3) { background: #85dba1; }
+html[data-theme="dark"] .relay-pad:nth-child(4) { background: #7cc7e4; }
+
+html[data-theme="dark"] .relay-pad.active {
+  background: #c8f84d;
+  color: #10130f;
+}
