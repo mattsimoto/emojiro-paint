@@ -28,21 +28,53 @@
   ];
 
   const INSTRUMENTS = [
-    { id: "kalimba", emoji: "🙂", name: "Smile Keys", type: "kalimba" },
-    { id: "drum", emoji: "🍄", name: "Mushroom Drum", type: "drum" },
-    { id: "lizard", emoji: "🦎", name: "Lizard Zip", type: "lizard" },
-    { id: "star", emoji: "⭐", name: "Star Bells", type: "star" },
-    { id: "trumpet", emoji: "🌼", name: "Flower Horn", type: "trumpet" },
-    { id: "game", emoji: "🎮", name: "Game Wave", type: "game" },
+    { id: "kalimba", emoji: "🙂", name: "Smile Pluck", type: "kalimba" },
+    { id: "drum", emoji: "🍄", name: "Mushroom Thump", type: "drum" },
+    { id: "lizard", emoji: "🦎", name: "Lizard Chirp", type: "lizard" },
+    { id: "star", emoji: "⭐", name: "Star Twinkle", type: "star" },
+    { id: "trumpet", emoji: "🌼", name: "Flower Chime", type: "flower" },
+    { id: "game", emoji: "🎮", name: "8-Bit Beep", type: "game" },
     { id: "dog", emoji: "🐶", name: "Dog Bark", type: "dog" },
     { id: "cat", emoji: "🐱", name: "Cat Meow", type: "cat" },
     { id: "pig", emoji: "🐷", name: "Pig Oink", type: "pig" },
-    { id: "duck", emoji: "🦆", name: "Duck Hit", type: "duck" },
+    { id: "duck", emoji: "🦆", name: "Duck Quack", type: "duck" },
     { id: "baby", emoji: "👶", name: "Baby Hiccup", type: "baby" },
-    { id: "plane", emoji: "✈️", name: "Plane Guitar", type: "plane" },
-    { id: "ship", emoji: "🚢", name: "Ship Percussion", type: "ship" },
-    { id: "car", emoji: "🚗", name: "Car Organ", type: "car" },
-    { id: "heart", emoji: "❤️", name: "Heart Bass", type: "heart" }
+    { id: "plane", emoji: "✈️", name: "Plane Engine", type: "plane" },
+    { id: "ship", emoji: "🚢", name: "Ship Horn", type: "ship" },
+    { id: "car", emoji: "🚗", name: "Car Horn", type: "car" },
+    { id: "heart", emoji: "❤️", name: "Heartbeat", type: "heart" },
+
+    { id: "frog", emoji: "🐸", name: "Frog Croak", type: "frog" },
+    { id: "cow", emoji: "🐮", name: "Cow Moo", type: "cow" },
+    { id: "chicken", emoji: "🐔", name: "Chicken Cluck", type: "chicken" },
+    { id: "horse", emoji: "🐴", name: "Horse Neigh", type: "horse" },
+    { id: "monkey", emoji: "🐵", name: "Monkey Chatter", type: "monkey" },
+    { id: "lion", emoji: "🦁", name: "Lion Roar", type: "lion" },
+    { id: "elephant", emoji: "🐘", name: "Elephant Trumpet", type: "elephant" },
+    { id: "bee", emoji: "🐝", name: "Bee Buzz", type: "bee" },
+    { id: "owl", emoji: "🦉", name: "Owl Hoot", type: "owl" },
+    { id: "bird", emoji: "🐦", name: "Bird Chirp", type: "bird" },
+    { id: "wolf", emoji: "🐺", name: "Wolf Howl", type: "wolf" },
+    { id: "dolphin", emoji: "🐬", name: "Dolphin Whistle", type: "dolphin" },
+    { id: "whale", emoji: "🐋", name: "Whale Song", type: "whale" },
+
+    { id: "train", emoji: "🚂", name: "Train Chug", type: "train" },
+    { id: "helicopter", emoji: "🚁", name: "Helicopter Chop", type: "helicopter" },
+    { id: "rocket", emoji: "🚀", name: "Rocket Launch", type: "rocket" },
+    { id: "clock", emoji: "⏰", name: "Alarm Clock", type: "clock" },
+    { id: "bell", emoji: "🔔", name: "Bell Ring", type: "bell" },
+
+    { id: "guitar", emoji: "🎸", name: "Guitar Strum", type: "guitar" },
+    { id: "piano", emoji: "🎹", name: "Piano Key", type: "piano" },
+    { id: "sax", emoji: "🎷", name: "Saxophone", type: "sax" },
+    { id: "brass", emoji: "🎺", name: "Trumpet", type: "brass" },
+    { id: "violin", emoji: "🎻", name: "Violin Bow", type: "violin" },
+    { id: "snare", emoji: "🥁", name: "Snare Drum", type: "snare" },
+
+    { id: "ghost", emoji: "👻", name: "Ghost Wail", type: "ghost" },
+    { id: "robot", emoji: "🤖", name: "Robot Blip", type: "robot" },
+    { id: "water", emoji: "💧", name: "Water Drop", type: "water" },
+    { id: "fire", emoji: "🔥", name: "Fire Crackle", type: "fire" }
   ];
 
   const PITCHES = ["G5", "F5", "E5", "D5", "C5", "B4", "A4", "G4", "F4", "E4", "D4", "C4", "B3"];
@@ -1874,9 +1906,9 @@
         tone("sine", frequency * 4, start, duration * 1.4, .055);
         tone("sine", frequency * 8.02, start, duration, .022);
         break;
-      case "trumpet":
-        tone("sawtooth", frequency, start, duration * .82, .055);
-        tone("triangle", frequency * 2, start, duration * .72, .035);
+      case "flower":
+        tone("sine", frequency * 2, start, duration * .9, .05);
+        tone("sine", frequency * 3.01, start + .015, duration * .7, .025);
         break;
       case "game":
         tone("square", frequency, start, duration * .65, .075);
@@ -1899,36 +1931,177 @@
         noiseBurst(start, duration * .35, .028, "lowpass", 650);
         break;
       }
-      case "duck":
-        tone("sawtooth", frequency, start, duration * .35, .045);
-        tone("square", frequency * 2, start, duration * .25, .035);
-        tone("triangle", frequency / 2, start, duration * .42, .035);
+      case "duck": {
+        const quack = tone("sawtooth", Math.max(120, frequency * .7), start, duration * .32, .07);
+        quack.frequency.exponentialRampToValueAtTime(Math.max(95, frequency * .48), start + duration * .32);
+        noiseBurst(start, duration * .16, .025, "bandpass", 1050);
         break;
+      }
       case "baby": {
         const hic = tone("sine", frequency * 1.5, start, duration * .3, .055);
         hic.frequency.exponentialRampToValueAtTime(frequency * 2.3, start + duration * .12);
         hic.frequency.exponentialRampToValueAtTime(frequency * 1.45, start + duration * .3);
         break;
       }
-      case "plane":
-        tone("triangle", frequency / 2, start, duration * .85, .075);
-        tone("sine", frequency, start, duration * .5, .024);
+      case "plane": {
+        tone("sawtooth", Math.max(55, frequency / 4), start, duration * 1.15, .055);
+        tone("sine", Math.max(90, frequency / 2), start, duration * 1.1, .035);
+        noiseBurst(start, duration * .9, .018, "lowpass", 700);
         break;
+      }
       case "ship":
-        if (frequency < 440) {
-          tone("square", 155 + frequency * .08, start, .09, .07);
-          tone("square", 225 + frequency * .05, start + .018, .07, .04);
-        } else {
-          noiseBurst(start, .18, .075, "highpass", 3200);
-        }
+        tone("sine", Math.max(65, frequency / 3), start, duration * 1.25, .095);
+        tone("sine", Math.max(95, frequency / 2), start, duration * 1.15, .055);
         break;
       case "car":
-        tone("square", frequency * 2, start, duration * .8, .04, -6);
-        tone("square", frequency * 4, start, duration * .8, .026, 6);
+        tone("square", Math.max(180, frequency * .9), start, duration * .45, .055);
+        tone("square", Math.max(240, frequency * 1.2), start + .03, duration * .4, .035);
         break;
       case "heart":
-        tone("sawtooth", frequency / 4, start, duration * .95, .085);
-        tone("sine", frequency / 2, start, duration * .8, .03);
+        tone("sine", Math.max(42, frequency / 5), start, .11, .12);
+        tone("sine", Math.max(38, frequency / 5.5), start + .16, .14, .09);
+        break;
+
+      case "frog": {
+        const croak = tone("square", Math.max(70, frequency / 2.5), start, duration * .55, .065);
+        croak.frequency.exponentialRampToValueAtTime(Math.max(50, frequency / 3.6), start + duration * .55);
+        noiseBurst(start, duration * .3, .02, "lowpass", 500);
+        break;
+      }
+      case "cow": {
+        const moo = tone("sawtooth", Math.max(65, frequency / 2.4), start, duration * 1.05, .065);
+        moo.frequency.exponentialRampToValueAtTime(Math.max(55, frequency / 2.8), start + duration * 1.05);
+        tone("sine", Math.max(95, frequency / 1.7), start, duration * .95, .025);
+        break;
+      }
+      case "chicken":
+        noiseBurst(start, .055, .055, "bandpass", 1800);
+        tone("square", frequency * 1.8, start, .06, .035);
+        tone("square", frequency * 2.2, start + .075, .055, .03);
+        break;
+      case "horse": {
+        const neigh = tone("sawtooth", frequency * .85, start, duration * .85, .05);
+        neigh.frequency.exponentialRampToValueAtTime(frequency * 1.55, start + duration * .35);
+        neigh.frequency.exponentialRampToValueAtTime(frequency * .72, start + duration * .85);
+        break;
+      }
+      case "monkey":
+        tone("square", frequency * 1.45, start, .09, .045);
+        tone("square", frequency * 1.8, start + .11, .08, .04);
+        tone("square", frequency * 1.25, start + .22, .1, .04);
+        break;
+      case "lion": {
+        const roar = tone("sawtooth", Math.max(48, frequency / 4), start, duration * .95, .09);
+        roar.frequency.exponentialRampToValueAtTime(Math.max(36, frequency / 6), start + duration * .95);
+        noiseBurst(start, duration * .75, .055, "lowpass", 420);
+        break;
+      }
+      case "elephant": {
+        const trumpet = tone("sawtooth", Math.max(110, frequency * .7), start, duration * .8, .065);
+        trumpet.frequency.exponentialRampToValueAtTime(Math.max(190, frequency * 1.35), start + duration * .55);
+        break;
+      }
+      case "bee":
+        tone("sawtooth", 190 + frequency * .18, start, duration * .85, .045);
+        tone("square", 235 + frequency * .12, start, duration * .8, .022);
+        break;
+      case "owl":
+        tone("sine", Math.max(105, frequency / 2), start, duration * .5, .07);
+        tone("sine", Math.max(85, frequency / 2.6), start + .18, duration * .48, .06);
+        break;
+      case "bird": {
+        const chirp = tone("sine", frequency * 2.2, start, duration * .28, .055);
+        chirp.frequency.exponentialRampToValueAtTime(frequency * 3.3, start + duration * .14);
+        chirp.frequency.exponentialRampToValueAtTime(frequency * 2.55, start + duration * .28);
+        break;
+      }
+      case "wolf": {
+        const howl = tone("sine", frequency * .55, start, duration * 1.35, .065);
+        howl.frequency.exponentialRampToValueAtTime(frequency * .95, start + duration * .7);
+        howl.frequency.exponentialRampToValueAtTime(frequency * .72, start + duration * 1.35);
+        break;
+      }
+      case "dolphin": {
+        const whistle = tone("sine", frequency * 3, start, duration * .5, .05);
+        whistle.frequency.exponentialRampToValueAtTime(frequency * 5.5, start + duration * .22);
+        whistle.frequency.exponentialRampToValueAtTime(frequency * 3.8, start + duration * .5);
+        break;
+      }
+      case "whale":
+        tone("sine", Math.max(45, frequency / 5), start, duration * 1.8, .085);
+        tone("sine", Math.max(70, frequency / 3.5), start + .12, duration * 1.5, .035);
+        break;
+
+      case "train":
+        tone("square", 85, start, .11, .075);
+        tone("square", 85, start + .16, .11, .065);
+        noiseBurst(start, duration * .5, .035, "lowpass", 900);
+        break;
+      case "helicopter":
+        noiseBurst(start, duration * .75, .055, "lowpass", 700);
+        tone("square", 42, start, duration * .75, .045);
+        break;
+      case "rocket": {
+        const launch = tone("sawtooth", 55, start, duration * 1.2, .055);
+        launch.frequency.exponentialRampToValueAtTime(260, start + duration * 1.2);
+        noiseBurst(start, duration, .06, "highpass", 1200);
+        break;
+      }
+      case "clock":
+        tone("square", 880, start, .08, .055);
+        tone("square", 880, start + .13, .08, .045);
+        break;
+      case "bell":
+        tone("sine", frequency * 2, start, duration * 1.5, .07);
+        tone("sine", frequency * 3.01, start, duration * 1.25, .035);
+        tone("sine", frequency * 4.1, start, duration, .018);
+        break;
+
+      case "guitar":
+        tone("triangle", frequency, start, duration * .9, .065);
+        tone("sine", frequency * 2, start + .008, duration * .6, .025);
+        noiseBurst(start, .025, .018, "highpass", 2600);
+        break;
+      case "piano":
+        tone("triangle", frequency, start, duration * 1.05, .07);
+        tone("sine", frequency * 2, start, duration * .65, .03);
+        tone("sine", frequency * 3, start, duration * .4, .015);
+        break;
+      case "sax":
+        tone("sawtooth", frequency, start, duration * .9, .05);
+        tone("square", frequency * 2, start, duration * .72, .018);
+        break;
+      case "brass":
+        tone("sawtooth", frequency, start, duration * .82, .065);
+        tone("triangle", frequency * 2, start, duration * .7, .03);
+        break;
+      case "violin":
+        tone("sawtooth", frequency, start, duration * 1.15, .045);
+        tone("triangle", frequency * 2, start, duration * 1.05, .02);
+        break;
+      case "snare":
+        noiseBurst(start, .14, .11, "highpass", 1200);
+        tone("triangle", 175, start, .1, .045);
+        break;
+
+      case "ghost": {
+        const wail = tone("sine", frequency * .7, start, duration * 1.25, .055);
+        wail.frequency.exponentialRampToValueAtTime(frequency * 1.25, start + duration * .55);
+        wail.frequency.exponentialRampToValueAtTime(frequency * .62, start + duration * 1.25);
+        break;
+      }
+      case "robot":
+        tone("square", frequency * 1.5, start, .12, .055);
+        tone("square", frequency * 2.25, start + .1, .1, .04);
+        tone("square", frequency * 1.1, start + .2, .12, .035);
+        break;
+      case "water":
+        tone("sine", frequency * 2.8, start, duration * .35, .04);
+        tone("sine", frequency * 1.4, start + .08, duration * .45, .025);
+        break;
+      case "fire":
+        noiseBurst(start, duration * .75, .065, "bandpass", 1500);
+        noiseBurst(start + .08, duration * .45, .035, "highpass", 2800);
         break;
       default:
         tone("sine", frequency, start, duration, .07);
@@ -3662,8 +3835,13 @@
 
     const channels = [0,1,2,3,4,5,6,7,8,10,11,12,13,14,15];
     const programMap = {
-      kalimba:108, lizard:80, star:9, trumpet:56, game:81, dog:79, cat:79,
-      pig:80, duck:81, baby:52, plane:27, ship:115, car:16, heart:33
+      kalimba:108, lizard:80, star:9, trumpet:10, game:81, dog:79, cat:79,
+      pig:80, duck:81, baby:52, plane:96, ship:60, car:61, heart:33,
+      frog:79, cow:58, chicken:80, horse:60, monkey:78, lion:58, elephant:56,
+      bee:86, owl:78, bird:79, wolf:53, dolphin:79, whale:53,
+      train:55, helicopter:96, rocket:96, clock:14, bell:14,
+      guitar:25, piano:0, sax:65, brass:56, violin:40, snare:115,
+      ghost:52, robot:81, water:98, fire:127
     };
     let melodicChannelIndex = 0;
 
@@ -3671,7 +3849,9 @@
       const used = sequence.some((row) => row.slice(0, songEndStep).includes(instrument.id));
       if (!used) return;
 
-      const channel = instrument.id === "drum" ? 9 : channels[melodicChannelIndex++];
+      const channel = instrument.id === "drum" || instrument.id === "snare"
+        ? 9
+        : channels[(melodicChannelIndex++) % channels.length];
       const events = [];
       for (let section = 0; section < SECTION_COUNT; section += 1) {
         const step = sectionStart(section);
@@ -3758,7 +3938,7 @@
       case "drum": return { wave: "sine", frequency: 72, gain: .45, duration: .22, noise: .12 };
       case "lizard": return { wave: "square", frequency: frequency * 1.4, gain: .16, duration: .22, bend: 1.45 };
       case "star": return { wave: "sine", frequency: frequency * 4, gain: .16, duration: .65, harmonic: 2 };
-      case "trumpet": return { wave: "sawtooth", frequency, gain: .16, duration: .42, harmonic: 2 };
+      case "trumpet": return { wave: "sine", frequency: frequency * 2, gain: .15, duration: .5, harmonic: 1.5 };
       case "game": return { wave: "square", frequency, gain: .18, duration: .34 };
       case "dog": return { wave: "sawtooth", frequency: Math.max(65, frequency / 2), gain: .17, duration: .24, bend: .72, noise: .05 };
       case "cat": return { wave: "sawtooth", frequency, gain: .13, duration: .36, bend: 1.25 };
@@ -3768,7 +3948,35 @@
       case "plane": return { wave: "triangle", frequency: frequency / 2, gain: .2, duration: .48, harmonic: 2 };
       case "ship": return { wave: frequency < 440 ? "square" : "sine", frequency: frequency < 440 ? 170 : frequency * 2, gain: .16, duration: .18, noise: frequency < 440 ? .02 : .18 };
       case "car": return { wave: "square", frequency: frequency * 2, gain: .12, duration: .42, harmonic: 2 };
-      case "heart": return { wave: "sawtooth", frequency: frequency / 4, gain: .24, duration: .52, harmonic: 2 };
+      case "heart": return { wave: "sine", frequency: Math.max(42, frequency / 5), gain: .28, duration: .34, harmonic: 1.15 };
+      case "frog": return { wave: "square", frequency: Math.max(70, frequency / 2.5), gain: .17, duration: .3, bend: .72, noise: .04 };
+      case "cow": return { wave: "sawtooth", frequency: Math.max(65, frequency / 2.4), gain: .16, duration: .62, bend: .82, harmonic: 1.5 };
+      case "chicken": return { wave: "square", frequency: frequency * 1.9, gain: .13, duration: .16, noise: .1 };
+      case "horse": return { wave: "sawtooth", frequency: frequency * .85, gain: .14, duration: .58, bend: 1.5 };
+      case "monkey": return { wave: "square", frequency: frequency * 1.45, gain: .14, duration: .28, harmonic: 1.3 };
+      case "lion": return { wave: "sawtooth", frequency: Math.max(48, frequency / 4), gain: .2, duration: .62, bend: .72, noise: .12 };
+      case "elephant": return { wave: "sawtooth", frequency: Math.max(110, frequency * .7), gain: .18, duration: .52, bend: 1.7 };
+      case "bee": return { wave: "sawtooth", frequency: 190 + frequency * .18, gain: .13, duration: .5, harmonic: 1.2 };
+      case "owl": return { wave: "sine", frequency: Math.max(95, frequency / 2.2), gain: .18, duration: .48, harmonic: .8 };
+      case "bird": return { wave: "sine", frequency: frequency * 2.4, gain: .15, duration: .24, bend: 1.45 };
+      case "wolf": return { wave: "sine", frequency: frequency * .55, gain: .17, duration: .88, bend: 1.5 };
+      case "dolphin": return { wave: "sine", frequency: frequency * 3.2, gain: .14, duration: .36, bend: 1.65 };
+      case "whale": return { wave: "sine", frequency: Math.max(45, frequency / 5), gain: .2, duration: 1.1, harmonic: 1.6 };
+      case "train": return { wave: "square", frequency: 85, gain: .2, duration: .3, noise: .08 };
+      case "helicopter": return { wave: "square", frequency: 42, gain: .17, duration: .5, noise: .14 };
+      case "rocket": return { wave: "sawtooth", frequency: 55, gain: .16, duration: .72, bend: 4.2, noise: .16 };
+      case "clock": return { wave: "square", frequency: 880, gain: .16, duration: .18 };
+      case "bell": return { wave: "sine", frequency: frequency * 2, gain: .2, duration: .9, harmonic: 1.5 };
+      case "guitar": return { wave: "triangle", frequency, gain: .18, duration: .55, harmonic: 2, noise: .025 };
+      case "piano": return { wave: "triangle", frequency, gain: .2, duration: .65, harmonic: 2 };
+      case "sax": return { wave: "sawtooth", frequency, gain: .15, duration: .55, harmonic: 2 };
+      case "brass": return { wave: "sawtooth", frequency, gain: .18, duration: .52, harmonic: 2 };
+      case "violin": return { wave: "sawtooth", frequency, gain: .13, duration: .72, harmonic: 2 };
+      case "snare": return { wave: "triangle", frequency: 175, gain: .2, duration: .17, noise: .28 };
+      case "ghost": return { wave: "sine", frequency: frequency * .7, gain: .14, duration: .85, bend: 1.65 };
+      case "robot": return { wave: "square", frequency: frequency * 1.5, gain: .16, duration: .28, harmonic: 1.5 };
+      case "water": return { wave: "sine", frequency: frequency * 2.8, gain: .13, duration: .32, bend: .7 };
+      case "fire": return { wave: "sine", frequency: frequency * .5, gain: .09, duration: .5, noise: .32 };
       default: return { wave: "sine", frequency, gain: .15, duration: .3 };
     }
   }
