@@ -99,6 +99,43 @@
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
 
+  const THEME_KEY = "emojiro-paint-theme-v1";
+
+  function applyTheme(theme, persist = true) {
+    const dark = theme === "dark";
+    document.documentElement.dataset.theme = dark ? "dark" : "light";
+    document.documentElement.style.colorScheme = dark ? "dark" : "light";
+    const button = $("#themeToggleBtn");
+    if (button) {
+      button.setAttribute("aria-pressed", String(dark));
+      button.setAttribute("aria-label", dark ? "Switch to light mode" : "Switch to dark mode");
+      button.title = dark ? "Switch to light mode" : "Switch to dark mode";
+      const icon = $(".theme-toggle-icon", button);
+      const label = $(".theme-toggle-label", button);
+      if (icon) icon.textContent = dark ? "☀️" : "🌙";
+      if (label) label.textContent = dark ? "Light" : "Dark";
+    }
+    if (persist) {
+      try { localStorage.setItem(THEME_KEY, dark ? "dark" : "light"); } catch (error) {}
+    }
+  }
+
+  function loadTheme() {
+    let saved = "light";
+    try {
+      const stored = localStorage.getItem(THEME_KEY);
+      if (stored === "dark" || stored === "light") saved = stored;
+    } catch (error) {}
+    applyTheme(saved, false);
+  }
+
+  $("#themeToggleBtn").addEventListener("click", () => {
+    const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+    applyTheme(next);
+  });
+
+  loadTheme();
+
   let toastTimer = 0;
   function toast(message) {
     const el = $("#toast");
