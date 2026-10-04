@@ -6,7 +6,7 @@ Emojiro Paint is a touch-friendly browser creativity toy inspired by classic con
 
 ### 🎵 Music-first interface
 
-- Upcycle-inspired visual refresh: warm neutral canvas, near-black typography, restrained lime accent, flatter tactile controls, fewer heavy shadows, and clearer editorial spacing
+- Color-blocked Aria-style UI: turquoise page bands, cream work surfaces, pink/purple/mint/orange modules, yellow action accents, thick ink outlines, and monospace display typography
 - Persistent light/dark theme toggle with high-contrast dark surfaces, controls, sequencer cells, dialogs, and mobile states
 - Song section buttons now live directly beneath the music grid instead of above the instrument/composer workspace
 
