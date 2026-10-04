@@ -140,13 +140,21 @@
     area.remove();
   }
 
-  $$(".mode-tab").forEach((button) => {
+  $(".mode-tab[data-panel]").forEach((button) => {
     button.addEventListener("click", () => {
-      $$(".mode-tab").forEach((tab) => tab.classList.toggle("active", tab === button));
-      $$(".panel").forEach((panel) => panel.classList.toggle("active", panel.id === button.dataset.panel));
+      $(".mode-tab[data-panel]").forEach((tab) => tab.classList.toggle("active", tab === button));
+      $(".panel").forEach((panel) => panel.classList.toggle("active", panel.id === button.dataset.panel));
+      const moreMenu = $("#moreModeMenu");
+      if (moreMenu) moreMenu.open = false;
       if (button.dataset.panel !== "musicPanel") stopMusic();
       if (button.dataset.panel !== "toyPanel") stopToyGames();
     });
+  });
+
+  $("#mobileProjectsBtn").addEventListener("click", () => {
+    const moreMenu = $("#moreModeMenu");
+    if (moreMenu) moreMenu.open = false;
+    $("#projectsBtn").click();
   });
 
   // -----------------------------
@@ -1491,7 +1499,7 @@
   let playbackStartStep = 0;
   let playbackEndStep = SEQ_STEPS;
   let composerZoom = 38;
-  let composerCompact = false;
+  let composerCompact = window.matchMedia && window.matchMedia("(max-width: 640px)").matches;
   let scaleAssist = "all";
   let notePaintMode = false;
   let notePaintDragging = false;
@@ -1664,7 +1672,11 @@
         refreshSectionSelection();
         refreshMeasureSelection();
         const header = $('.seq-step[data-step="' + start + '"]');
-        if (header) header.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "start" });
+        if (header) header.scrollIntoView({
+          behavior: "smooth",
+          block: "nearest",
+          inline: window.innerWidth <= 640 ? "center" : "start"
+        });
       });
 
       overview.appendChild(card);
@@ -2047,7 +2059,9 @@
       button.className = "instrument-button" +
         (instrument.id === selectedInstrument ? " active" : "") +
         (!allowed ? " section-disabled" : "");
-      button.innerHTML = '<span class="emoji">' + instrument.emoji + "</span>" + instrument.name;
+      button.innerHTML = '<span class="emoji">' + instrument.emoji + "</span><span class="instrument-name">' + instrument.name + "</span>";
+      button.setAttribute("aria-label", instrument.name);
+      button.title = instrument.name;
       button.addEventListener("click", () => {
         if (!sectionPaletteAllows(instrument.id)) return;
         selectedInstrument = instrument.id;
@@ -2996,6 +3010,20 @@
     }
   }
 
+  $("#musicToolsToggle").addEventListener("click", () => {
+    const panel = $("#musicPanel");
+    const open = !panel.classList.contains("show-advanced");
+    panel.classList.toggle("show-advanced", open);
+    $("#musicToolsToggle").setAttribute("aria-pressed", String(open));
+    $("#musicToolsToggle").textContent = open ? "✕ Done" : "☰ Tools";
+    if (open) {
+      const firstAdvanced = $(".section-editor-head");
+      if (firstAdvanced && window.innerWidth <= 640) {
+        firstAdvanced.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+    }
+  });
+
   $("#copyMeasureBtn").addEventListener("click", () => {
     const start = currentMeasureStart();
     measureClipboard = {
@@ -3036,7 +3064,10 @@
     toast("Measure cleared");
   });
 
-  $("#playMusicBtn").addEventListener("click", () => startMusic("song"));
+  $("#playMusicBtn").addEventListener("click", () => {
+    if (isMusicPlaying) stopMusic();
+    else startMusic("song");
+  });
   $("#stopMusicBtn").addEventListener("click", () => stopMusic());
 
   $("#playSectionBtn").addEventListener("click", () => {
