@@ -6,6 +6,9 @@ Emojiro Paint is a touch-friendly browser creativity toy inspired by classic con
 
 ### 🎵 Music-first interface
 
+- Upcycle-inspired visual refresh: warm neutral canvas, near-black typography, restrained lime accent, flatter tactile controls, fewer heavy shadows, and clearer editorial spacing
+- Song section buttons now live directly beneath the music grid instead of above the instrument/composer workspace
+
 - Music Maker is now the default screen
 - Paint/animation tools, Toy Box, and About live under a secondary **More** menu
 - The normal composer view shows only transport/tempo, four sections, the instrument strip, and the staff
