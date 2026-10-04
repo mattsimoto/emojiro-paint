@@ -11,6 +11,7 @@
   const CUSTOM_STAMPS_KEY = "emojiro-paint-custom-stamps-v1";
   const AUTOSAVE_KEY = "emojiro-paint-autosave-v1";
   const PROJECT_LIBRARY_KEY = "emojiro-paint-library-v1";
+  const CLOUD_CONFIG_KEY = "emojiro-paint-cloud-config-v1";
   const MAX_LIBRARY_PROJECTS = 8;
 
   const COLORS = [
@@ -4105,6 +4106,192 @@
     );
   }
 
+  function cloudConfigFromUi() {
+    return {
+      url: ($("#cloudProjectUrl").value || "").trim().replace(/\/+$/, ""),
+      key: ($("#cloudPublishableKey").value || "").trim(),
+      code: ($("#cloudSyncCode").value || "").trim()
+    };
+  }
+
+  function saveCloudConfig() {
+    const config = cloudConfigFromUi();
+    try {
+      localStorage.setItem(CLOUD_CONFIG_KEY, JSON.stringify(config));
+    } catch (error) {}
+    return config;
+  }
+
+  function loadCloudConfig() {
+    let config = {};
+    try {
+      config = JSON.parse(localStorage.getItem(CLOUD_CONFIG_KEY) || "{}");
+    } catch (error) {}
+    $("#cloudProjectUrl").value = config.url || "";
+    $("#cloudPublishableKey").value = config.key || "";
+    $("#cloudSyncCode").value = config.code || "";
+    $("#cloudSyncStatus").textContent = config.url && config.key && config.code ? "Configured" : "Not configured";
+  }
+
+  async function sha256Bytes(text) {
+    const bytes = new TextEncoder().encode(text);
+    return new Uint8Array(await crypto.subtle.digest("SHA-256", bytes));
+  }
+
+  async function cloudSyncId(code) {
+    const bytes = await sha256Bytes("emojiro-sync-id:" + code);
+    return Array.from(bytes, (value) => value.toString(16).padStart(2, "0")).join("");
+  }
+
+  async function cloudEncryptionKey(code) {
+    const raw = await sha256Bytes("emojiro-cloud-library:" + code);
+    return crypto.subtle.importKey("raw", raw, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
+  }
+
+  async function encryptCloudPayload(value, code) {
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const key = await cloudEncryptionKey(code);
+    const plain = new TextEncoder().encode(JSON.stringify(value));
+    const encrypted = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, plain));
+    return "v1." + bytesToBase64Url(iv) + "." + bytesToBase64Url(encrypted);
+  }
+
+  async function decryptCloudPayload(payload, code) {
+    const parts = String(payload || "").split(".");
+    if (parts.length !== 3 || parts[0] !== "v1") throw new Error("Unsupported cloud payload");
+    const key = await cloudEncryptionKey(code);
+    const iv = base64UrlToBytes(parts[1]);
+    const encrypted = base64UrlToBytes(parts[2]);
+    const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, encrypted);
+    return JSON.parse(new TextDecoder().decode(plain));
+  }
+
+  function validateCloudConfig(config) {
+    if (!/^https:\/\/[a-z0-9.-]+\.supabase\.co$/i.test(config.url)) {
+      throw new Error("Enter a valid Supabase project URL");
+    }
+    if (!config.key || (!config.key.startsWith("sb_publishable_") && config.key.length < 30)) {
+      throw new Error("Enter a Supabase publishable key");
+    }
+    if (config.code.length < 20) throw new Error("Use a generated sync code or a strong existing code");
+  }
+
+  async function cloudRequest(method, config, syncId, query, body) {
+    const response = await fetch(
+      config.url + "/rest/v1/emojiro_cloud_libraries" + (query || ""),
+      {
+        method,
+        headers: {
+          apikey: config.key,
+          "Content-Type": "application/json",
+          "x-emojiro-sync": syncId,
+          ...(method === "POST" ? { Prefer: "resolution=merge-duplicates,return=minimal" } : {})
+        },
+        body: body == null ? undefined : JSON.stringify(body)
+      }
+    );
+    if (!response.ok) {
+      let detail = "";
+      try { detail = (await response.json()).message || ""; } catch (error) {}
+      throw new Error(detail || ("Cloud request failed (" + response.status + ")"));
+    }
+    if (response.status === 204) return null;
+    return response.json();
+  }
+
+  function mergeCloudProjects(remoteProjects) {
+    const byId = new Map();
+    [...projectLibrary, ...(Array.isArray(remoteProjects) ? remoteProjects : [])].forEach((entry) => {
+      if (!entry || !entry.id || !entry.payload) return;
+      const existing = byId.get(entry.id);
+      if (!existing || Number(entry.updatedAt) > Number(existing.updatedAt)) byId.set(entry.id, entry);
+    });
+    projectLibrary = [...byId.values()]
+      .sort((a, b) => Number(b.updatedAt) - Number(a.updatedAt))
+      .slice(0, MAX_LIBRARY_PROJECTS);
+  }
+
+  $("#generateCloudCodeBtn").addEventListener("click", () => {
+    const bytes = crypto.getRandomValues(new Uint8Array(24));
+    $("#cloudSyncCode").value = bytesToBase64Url(bytes);
+    saveCloudConfig();
+    $("#cloudSyncStatus").textContent = "New sync code generated";
+  });
+
+  $("#pushCloudLibraryBtn").addEventListener("click", async () => {
+    const button = $("#pushCloudLibraryBtn");
+    button.disabled = true;
+    $("#cloudSyncStatus").textContent = "Encrypting…";
+    try {
+      const config = saveCloudConfig();
+      validateCloudConfig(config);
+      const syncId = await cloudSyncId(config.code);
+      const payload = await encryptCloudPayload({
+        version: 1,
+        pushedAt: new Date().toISOString(),
+        projects: projectLibrary
+      }, config.code);
+      await cloudRequest("POST", config, syncId, "?on_conflict=sync_id", {
+        sync_id: syncId,
+        payload,
+        updated_at: new Date().toISOString()
+      });
+      $("#cloudSyncStatus").textContent = "Cloud library updated";
+      toast("Encrypted project library pushed");
+    } catch (error) {
+      $("#cloudSyncStatus").textContent = error.message || "Cloud push failed";
+      toast("Cloud push failed");
+    } finally {
+      button.disabled = false;
+    }
+  });
+
+  $("#pullCloudLibraryBtn").addEventListener("click", async () => {
+    const button = $("#pullCloudLibraryBtn");
+    button.disabled = true;
+    $("#cloudSyncStatus").textContent = "Downloading…";
+    try {
+      const config = saveCloudConfig();
+      validateCloudConfig(config);
+      const syncId = await cloudSyncId(config.code);
+      const rows = await cloudRequest(
+        "GET",
+        config,
+        syncId,
+        "?select=payload,updated_at&sync_id=eq." + encodeURIComponent(syncId),
+        null
+      );
+      if (!Array.isArray(rows) || !rows.length) {
+        $("#cloudSyncStatus").textContent = "No cloud library found";
+        return;
+      }
+      const decoded = await decryptCloudPayload(rows[0].payload, config.code);
+      mergeCloudProjects(decoded.projects);
+      persistProjectLibrary();
+      renderProjectLibrary();
+      $("#cloudSyncStatus").textContent = "Cloud library merged";
+      toast("Cloud projects merged onto this device");
+    } catch (error) {
+      $("#cloudSyncStatus").textContent = error.message || "Cloud pull failed";
+      toast("Cloud pull failed");
+    } finally {
+      button.disabled = false;
+    }
+  });
+
+  $("#forgetCloudConfigBtn").addEventListener("click", () => {
+    localStorage.removeItem(CLOUD_CONFIG_KEY);
+    $("#cloudProjectUrl").value = "";
+    $("#cloudPublishableKey").value = "";
+    $("#cloudSyncCode").value = "";
+    $("#cloudSyncStatus").textContent = "Not configured";
+    toast("Cloud configuration forgotten");
+  });
+
+  ["cloudProjectUrl", "cloudPublishableKey", "cloudSyncCode"].forEach((id) => {
+    $("#" + id).addEventListener("change", saveCloudConfig);
+  });
+
   function renderProjectLibrary() {
     const list = $("#projectLibraryList");
     list.innerHTML = "";
@@ -4269,6 +4456,7 @@
 
   $("#projectsBtn").addEventListener("click", () => {
     loadProjectLibrary();
+    loadCloudConfig();
     renderProjectLibrary();
     $("#projectLibraryDialog").showModal();
   });
@@ -4317,6 +4505,7 @@
   });
 
   loadProjectLibrary();
+  loadCloudConfig();
 
   // -----------------------------
   // Keyboard helpers
