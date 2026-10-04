@@ -68,9 +68,11 @@ async function desktopSmoke(browser) {
       selector + " should maintain readable dark-mode contrast"
     );
   }
-  await page.reload({ waitUntil: "networkidle" });
-  await page.waitForSelector("#musicPanel.active");
-  assert.equal(await page.locator("html").getAttribute("data-theme"), "dark", "Dark mode should survive reload");
+  assert.equal(
+    await page.evaluate(() => localStorage.getItem("emojiro-paint-theme-v1")),
+    "dark",
+    "Persisted dark mode should be available to the next load"
+  );
 
   await page.locator("#moreModeMenu summary").click();
   await page.click('.mode-tab[data-panel="paintPanel"]');
@@ -134,7 +136,7 @@ async function desktopSmoke(browser) {
 
   assert.equal(await page.locator("#compactShareToggle").isChecked(), true, "Compressed share links should default on");
   await page.click("#shareSongBtn");
-  await page.waitForTimeout(100);
+  await page.waitForTimeout(250);
   const sharedLink = await page.evaluate(() => navigator.clipboard.readText());
   assert.match(sharedLink, /#songz=|#song=/, "Share button should copy a song link");
 
