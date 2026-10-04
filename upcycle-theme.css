@@ -1984,3 +1984,111 @@ html[data-theme="dark"] #projectsBtn.header-icon-button {
     font-size: 27px;
   }
 }
+
+
+/* FULL-BLEED HEADER INTEGRATION */
+
+/* Replace the old painted-on page bands with real full-width header/nav bands. */
+body {
+  background: var(--aria-sky) !important;
+  background-attachment: initial !important;
+}
+
+.app-shell {
+  width: min(1280px, 100%);
+  padding-top: 0;
+}
+
+/* Full-bleed cream header, with content aligned to the app's max-width grid. */
+.topbar {
+  width: 100vw;
+  max-width: none;
+  margin: 0 0 0 calc(50% - 50vw) !important;
+  padding:
+    14px
+    max(16px, calc((100vw - 1280px) / 2 + 28px))
+    14px !important;
+  min-height: 108px;
+  border-top: 0;
+  border-right: 0;
+  border-left: 0;
+  border-bottom: 6px solid var(--aria-ink);
+  background: var(--aria-cream);
+  box-shadow: none;
+}
+
+/* Full-bleed turquoise navigation directly attached to the header. */
+.primary-nav {
+  width: 100vw;
+  max-width: none;
+  margin: 0 0 0 calc(50% - 50vw) !important;
+  padding:
+    18px
+    max(16px, calc((100vw - 1280px) / 2 + 28px))
+    20px !important;
+  border-top: 0;
+  border-right: 0;
+  border-left: 0;
+  border-bottom: 6px solid var(--aria-ink);
+  background: var(--aria-cyan);
+  box-shadow: none;
+}
+
+/* Remove the old visual notch/overhang effect. */
+main {
+  margin-top: 0;
+  padding-top: clamp(22px, 3vw, 34px);
+}
+
+.music-panel {
+  margin-inline: 0;
+}
+
+/* Keep header content visually balanced within the full-width band. */
+.brand {
+  align-self: center;
+}
+
+.brand h1 {
+  line-height: .96;
+}
+
+.top-actions {
+  align-self: center;
+}
+
+/* Dark mode keeps the exact same band structure. */
+html[data-theme="dark"] body {
+  background: #1c3c4d !important;
+}
+
+html[data-theme="dark"] .topbar {
+  background: #171a18;
+  border-bottom-color: #dce2d8;
+}
+
+html[data-theme="dark"] .primary-nav {
+  background: #204e52;
+  border-bottom-color: #dce2d8;
+}
+
+@media (max-width: 640px) {
+  .topbar {
+    width: 100vw;
+    min-height: 86px;
+    margin-left: calc(50% - 50vw) !important;
+    padding: 9px 10px 10px !important;
+    border-bottom-width: 5px;
+  }
+
+  .primary-nav {
+    width: 100vw;
+    margin-left: calc(50% - 50vw) !important;
+    padding: 10px 10px 12px !important;
+    border-bottom-width: 5px;
+  }
+
+  main {
+    padding-top: 12px;
+  }
+}
