@@ -13,6 +13,7 @@
   <link rel="stylesheet" href="paint-plus.css" />
   <link rel="stylesheet" href="project-library.css" />
   <link rel="stylesheet" href="toybox.css" />
+  <link rel="stylesheet" href="upcycle-theme.css" />
 </head>
 <body>
   <div class="app-shell">
@@ -223,7 +224,6 @@
               <input id="sectionNameInput" type="text" maxlength="16" value="Section A" />
             </label>
           </div>
-          <div id="sectionBar" class="section-bar" aria-label="Song sections"></div>
           <div class="section-settings">
             <label class="check-row"><input id="sectionTempoToggle" type="checkbox" /> Custom section tempo</label>
             <label class="range-row">
@@ -437,6 +437,10 @@
           <div id="endMarkerHelp" class="end-marker-help" hidden>Tap a beat number to place the end marker.</div>
           <div class="sequencer-scroll" id="sequencerScroll">
             <div id="sequencer" class="sequencer" role="grid" aria-label="96-beat emoji music composer"></div>
+          </div>
+          <div class="section-strip-under-grid" aria-label="Song section navigation">
+            <span class="section-strip-label">Sections</span>
+            <div id="sectionBar" class="section-bar" aria-label="Song sections"></div>
           </div>
           <div class="music-hint">
             <span>Tap a filled cell with the same selected emoji to erase it.</span>
