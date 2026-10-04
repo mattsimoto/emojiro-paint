@@ -113,6 +113,7 @@ async function desktopSmoke(browser) {
   await page.click("#projectsBtn");
   assert.equal(await page.locator("#projectLibraryDialog").evaluate((el) => el.open), true, "Project library should open");
   await page.fill("#projectNameInput", "Browser Smoke Project");
+  await page.locator(".cloud-sync-card summary").click();
   await page.click("#generateCloudCodeBtn");
   assert((await page.locator("#cloudSyncCode").inputValue()).length >= 20, "Cloud sync should generate a strong sync code");
   await page.click("#saveNamedProjectBtn");
