@@ -1694,3 +1694,22 @@ html[data-theme="dark"] .relay-pad.active {
   background: #c8f84d;
   color: #10130f;
 }
+
+
+/* EXPLICIT DARK THEME TOGGLE */
+html[data-theme="dark"] #themeToggleBtn,
+html[data-theme="dark"] #themeToggleBtn[aria-pressed="true"] {
+  border: 3px solid #dce2d8 !important;
+  background: #f2d857 !important;
+  color: #14150c !important;
+}
+
+html[data-theme="dark"] #themeToggleBtn:hover {
+  background: #ffe77d !important;
+  color: #101108 !important;
+}
+
+html[data-theme="dark"] #themeToggleBtn .theme-toggle-icon,
+html[data-theme="dark"] #themeToggleBtn .theme-toggle-label {
+  color: #14150c !important;
+}
