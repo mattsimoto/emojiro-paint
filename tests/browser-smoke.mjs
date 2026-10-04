@@ -133,6 +133,7 @@ async function desktopSmoke(browser) {
   await page.click("#titleToyBtn");
   assert(await page.locator("#titleToyStage .title-toy-sprite").count() > 0, "Title toy should create emoji sprites");
 
+  await page.locator("#moreModeMenu summary").click();
   await page.click('.mode-tab[data-panel="toyPanel"]');
   await page.waitForSelector("#toyPanel.active");
   assert.equal(await page.locator("#catchGameCanvas").isVisible(), true, "Emoji Catch should be visible");
