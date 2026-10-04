@@ -4,6 +4,18 @@ Emojiro Paint is a touch-friendly browser creativity toy inspired by classic con
 
 ## Current build
 
+### 🎵 Music-first interface
+
+- Music Maker is now the default screen
+- Paint/animation tools, Toy Box, and About live under a secondary **More** menu
+- The normal composer view shows only transport/tempo, four sections, the instrument strip, and the staff
+- One **Tools** button reveals the advanced section editor, mixer, percussion, generators, demos, exports, and other occasional controls
+- Play toggles playback on/off, removing the need for a permanent separate Stop control
+- On phones, the staff renders one 24-beat section at a time instead of the full 96-beat song
+- Selecting Section A–D changes the mobile staff immediately; playback follows sections automatically
+- Mobile instruments use a compact horizontally scrollable emoji strip
+- The transport stays visible while composing on mobile
+
 ### 🎨 Paint Studio
 
 - 32 × 24 pixel-cell canvas
@@ -92,7 +104,7 @@ Emojiro Paint is a touch-friendly browser creativity toy inspired by classic con
 
 - Large touch controls
 - Touch painting and stamp editing
-- Horizontally scrollable music staff
+- 24-beat section-focused music staff on phones
 - Responsive layouts
 - Installable web-app manifest
 - Offline app-shell caching through a service worker
@@ -132,7 +144,7 @@ Use the frame strip to add, duplicate, delete, reorder, or select frames. **Onio
 
 ### Music
 
-Choose an emoji instrument, then place it on the staff. Each beat supports up to three simultaneous notes. Selecting the same instrument in the same cell removes it. Tap any beat to select its measure, then copy, paste, or clear the measure. The 96-beat song is also organized into four editable 24-beat sections that can be renamed, duplicated, moved, copied, pasted, or cleared. The mixer controls volume, mute, solo, stereo pan, tone filtering, and echo for each emoji instrument. Each section can also define its own instrument palette and save a mixer snapshot that automatically takes over for that section during playback and export. Sections can be auditioned independently, looped while editing, and assigned their own tempo. Copying, moving, duplicating, or creating a variation carries the section's melody, percussion pattern, and tempo together. Scale guides can dim notes outside the selected natural-note scale, chord helpers insert a triad at the selected beat, and **Drag to paint notes** turns the sequencer into a touch-friendly note brush. Progression templates can fill the selected section with block chords or arpeggios, while **Live Keys** can be played from the on-screen keyboard or A/W/S/E/D/F/T/G/Y/H/U/J/K computer keys and quantized directly into the active beat. Press **Space** to play or stop while Music Maker is active.
+Emojiro opens directly to Music Maker. Choose an emoji instrument, then place it on the staff. On phones, use the four section buttons to move through the 96-beat song in compact 24-beat pages. The default view keeps only the essential composition controls visible; tap **Tools** when you need arrangement, mixer, percussion, generation, or export controls. Each beat supports up to three simultaneous notes. Selecting the same instrument in the same cell removes it. Tap any beat to select its measure, then copy, paste, or clear the measure. The 96-beat song is also organized into four editable 24-beat sections that can be renamed, duplicated, moved, copied, pasted, or cleared. The mixer controls volume, mute, solo, stereo pan, tone filtering, and echo for each emoji instrument. Each section can also define its own instrument palette and save a mixer snapshot that automatically takes over for that section during playback and export. Sections can be auditioned independently, looped while editing, and assigned their own tempo. Copying, moving, duplicating, or creating a variation carries the section's melody, percussion pattern, and tempo together. Scale guides can dim notes outside the selected natural-note scale, chord helpers insert a triad at the selected beat, and **Drag to paint notes** turns the sequencer into a touch-friendly note brush. Progression templates can fill the selected section with block chords or arpeggios, while **Live Keys** can be played from the on-screen keyboard or A/W/S/E/D/F/T/G/Y/H/U/J/K computer keys and quantized directly into the active beat. Press **Space** to play or stop while Music Maker is active.
 
 ## Optional cloud sync setup
 
