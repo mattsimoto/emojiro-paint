@@ -74,7 +74,20 @@
     { id: "ghost", emoji: "👻", name: "Ghost Wail", type: "ghost" },
     { id: "robot", emoji: "🤖", name: "Robot Blip", type: "robot" },
     { id: "water", emoji: "💧", name: "Water Drop", type: "water" },
-    { id: "fire", emoji: "🔥", name: "Fire Crackle", type: "fire" }
+    { id: "fire", emoji: "🔥", name: "Fire Crackle", type: "fire" },
+
+    { id: "voiceAh", emoji: "😀", name: "Vocal Ah", type: "voiceAh" },
+    { id: "voiceOoh", emoji: "😮", name: "Vocal Ooh", type: "voiceOoh" },
+    { id: "laugh", emoji: "😂", name: "Laugh", type: "laugh" },
+    { id: "cry", emoji: "😭", name: "Cry", type: "cry" },
+    { id: "scream", emoji: "😱", name: "Scream", type: "scream" },
+    { id: "snore", emoji: "😴", name: "Snore", type: "snore" },
+    { id: "growl", emoji: "😡", name: "Growl", type: "growl" },
+    { id: "giggle", emoji: "🤭", name: "Giggle", type: "giggle" },
+    { id: "sneeze", emoji: "🤧", name: "Sneeze", type: "sneeze" },
+    { id: "kiss", emoji: "😘", name: "Kiss", type: "kiss" },
+    { id: "hmm", emoji: "🤔", name: "Hmm", type: "hmm" },
+    { id: "hey", emoji: "🥳", name: "Hey!", type: "hey" }
   ];
 
   const PITCHES = ["G5", "F5", "E5", "D5", "C5", "B4", "A4", "G4", "F4", "E4", "D4", "C4", "B3"];
@@ -1864,6 +1877,44 @@
     src.start(when);
   }
 
+  const VOCAL_FORMANTS = {
+    ah: [800, 1150],
+    ooh: [350, 900],
+    ee: [300, 2300],
+    oh: [450, 1000],
+    mm: [250, 1200],
+    eh: [550, 1750]
+  };
+
+  function vocalFormant(vowel, frequency, when, duration, gainValue = .055, bend = 1) {
+    const ac = ensureAudio();
+    const formants = VOCAL_FORMANTS[vowel] || VOCAL_FORMANTS.ah;
+    const base = Math.max(78, Math.min(380, frequency * .55));
+    const osc = ac.createOscillator();
+    osc.type = "sawtooth";
+    osc.frequency.setValueAtTime(base, when);
+    if (bend !== 1) {
+      osc.frequency.exponentialRampToValueAtTime(
+        Math.max(45, base * bend),
+        when + duration
+      );
+    }
+
+    formants.forEach((formant, index) => {
+      const filter = ac.createBiquadFilter();
+      filter.type = "bandpass";
+      filter.frequency.setValueAtTime(formant, when);
+      filter.Q.setValueAtTime(index === 0 ? 5.5 : 7.5, when);
+      const gain = connectGain(gainValue * (index === 0 ? 1 : .62), when, duration);
+      osc.connect(filter);
+      filter.connect(gain);
+    });
+
+    osc.start(when);
+    osc.stop(when + duration + .04);
+    return osc;
+  }
+
   function playInstrument(id, frequency, duration = .28, when, mixerOverride = null) {
     const ac = ensureAudio();
     const start = when == null ? ac.currentTime : when;
@@ -2102,6 +2153,58 @@
       case "fire":
         noiseBurst(start, duration * .75, .065, "bandpass", 1500);
         noiseBurst(start + .08, duration * .45, .035, "highpass", 2800);
+        break;
+
+      case "voiceAh":
+        vocalFormant("ah", frequency, start, Math.max(.28, duration * 1.1), .065, .96);
+        break;
+      case "voiceOoh":
+        vocalFormant("ooh", frequency, start, Math.max(.32, duration * 1.2), .07, .9);
+        break;
+      case "laugh":
+        [0, .115, .23].forEach((offset, index) => {
+          vocalFormant("ah", frequency * [1, 1.12, .98][index], start + offset, .095, .062, .9);
+        });
+        break;
+      case "cry": {
+        const sob = vocalFormant("ee", frequency * .9, start, Math.max(.42, duration * 1.35), .055, .72);
+        sob.detune.setValueAtTime(18, start);
+        sob.detune.linearRampToValueAtTime(-28, start + Math.max(.42, duration * 1.35));
+        noiseBurst(start + .08, .16, .018, "bandpass", 1800);
+        break;
+      }
+      case "scream":
+        vocalFormant("ee", frequency * 1.45, start, Math.max(.34, duration * 1.2), .075, 1.2);
+        noiseBurst(start, Math.max(.2, duration * .65), .03, "highpass", 2200);
+        break;
+      case "snore":
+        vocalFormant("ooh", frequency * .45, start, .34, .07, .72);
+        noiseBurst(start + .22, .18, .04, "lowpass", 550);
+        vocalFormant("ooh", frequency * .4, start + .42, .28, .055, .78);
+        break;
+      case "growl":
+        vocalFormant("ah", frequency * .42, start, Math.max(.36, duration * 1.15), .075, .68);
+        noiseBurst(start, Math.max(.28, duration), .045, "lowpass", 750);
+        break;
+      case "giggle":
+        [0, .075, .15, .225].forEach((offset, index) => {
+          vocalFormant("ee", frequency * (1.2 + index * .08), start + offset, .06, .045, .93);
+        });
+        break;
+      case "sneeze":
+        vocalFormant("ah", frequency * 1.05, start, .11, .055, 1.25);
+        noiseBurst(start + .075, .16, .095, "highpass", 1400);
+        break;
+      case "kiss":
+        vocalFormant("ooh", frequency * 1.05, start, .15, .05, 1.08);
+        noiseBurst(start + .14, .045, .035, "highpass", 3200);
+        break;
+      case "hmm":
+        vocalFormant("mm", frequency * .6, start, Math.max(.34, duration * 1.15), .065, .92);
+        break;
+      case "hey":
+        vocalFormant("eh", frequency * 1.05, start, .16, .07, 1.12);
+        vocalFormant("ee", frequency * 1.18, start + .12, .15, .045, .92);
         break;
       default:
         tone("sine", frequency, start, duration, .07);
@@ -3841,7 +3944,9 @@
       bee:86, owl:78, bird:79, wolf:53, dolphin:79, whale:53,
       train:55, helicopter:96, rocket:96, clock:14, bell:14,
       guitar:25, piano:0, sax:65, brass:56, violin:40, snare:115,
-      ghost:52, robot:81, water:98, fire:127
+      ghost:52, robot:81, water:98, fire:127,
+      voiceAh:52, voiceOoh:53, laugh:52, cry:53, scream:52, snore:53,
+      growl:52, giggle:53, sneeze:52, kiss:53, hmm:53, hey:52
     };
     let melodicChannelIndex = 0;
 
@@ -3979,6 +4084,18 @@
       case "robot": return { wave: "square", frequency: frequency * 1.5, gain: .16, duration: .28, harmonic: 1.5 };
       case "water": return { wave: "sine", frequency: frequency * 2.8, gain: .13, duration: .32, bend: .7 };
       case "fire": return { wave: "sine", frequency: frequency * .5, gain: .09, duration: .5, noise: .32 };
+      case "voiceAh": return { wave: "sawtooth", frequency: Math.max(80, frequency * .55), gain: .16, duration: .42, harmonic: 1.5, bend: .96 };
+      case "voiceOoh": return { wave: "sine", frequency: Math.max(78, frequency * .5), gain: .18, duration: .48, harmonic: 1.35, bend: .9 };
+      case "laugh": return { wave: "sawtooth", frequency: frequency * .62, gain: .16, duration: .34, harmonic: 1.5, pulse: 9 };
+      case "cry": return { wave: "sawtooth", frequency: frequency * .5, gain: .14, duration: .58, harmonic: 2, bend: .72, vibrato: 7 };
+      case "scream": return { wave: "sawtooth", frequency: frequency * .85, gain: .18, duration: .5, harmonic: 2.2, bend: 1.2, noise: .07 };
+      case "snore": return { wave: "sine", frequency: Math.max(55, frequency * .28), gain: .2, duration: .72, harmonic: 1.4, noise: .09, pulse: 3 };
+      case "growl": return { wave: "sawtooth", frequency: Math.max(48, frequency * .25), gain: .19, duration: .5, bend: .68, noise: .14 };
+      case "giggle": return { wave: "sawtooth", frequency: frequency * .72, gain: .13, duration: .34, harmonic: 1.8, pulse: 13 };
+      case "sneeze": return { wave: "sawtooth", frequency: frequency * .62, gain: .14, duration: .24, bend: 1.25, noise: .3 };
+      case "kiss": return { wave: "sine", frequency: frequency * .62, gain: .14, duration: .22, bend: 1.08, noise: .05 };
+      case "hmm": return { wave: "sine", frequency: frequency * .36, gain: .18, duration: .48, harmonic: 1.5, bend: .92 };
+      case "hey": return { wave: "sawtooth", frequency: frequency * .62, gain: .17, duration: .3, harmonic: 1.8, bend: 1.12 };
       default: return { wave: "sine", frequency, gain: .15, duration: .3 };
     }
   }
@@ -4028,8 +4145,13 @@
         const progress = i / Math.max(1, voiceSamples - 1);
         const envelope = Math.pow(1 - progress, id === "drum" ? 3.8 : 2.1) * Math.min(1, t / .008);
         const bend = config.bend ? 1 + (config.bend - 1) * progress : 1;
-        const phase = Math.PI * 2 * config.frequency * bend * t;
+        const vibrato = config.vibrato ? 1 + Math.sin(Math.PI * 2 * config.vibrato * t) * .025 : 1;
+        const phase = Math.PI * 2 * config.frequency * bend * vibrato * t;
         let sample = offlineWave(config.wave, phase);
+        if (config.pulse) {
+          const pulse = .35 + .65 * Math.max(0, Math.sin(Math.PI * 2 * config.pulse * t));
+          sample *= pulse;
+        }
         if (config.harmonic) sample += .28 * offlineWave("sine", phase * config.harmonic);
         if (config.noise) sample += (Math.random() * 2 - 1) * config.noise;
         sample *= config.gain * volume * envelope;
