@@ -24,6 +24,7 @@ jobs:
         run: |
           node --check app.js
           node --check tests/validate.mjs
+          node --check tests/browser-smoke.mjs
           node --check sw.js
 
       - name: Run DOM and selector smoke validation
@@ -36,10 +37,12 @@ jobs:
           test -f paint-plus.css
           test -f composer.css
           test -f project-library.css
+          test -f toybox.css
           test -f app.js
           test -f manifest.webmanifest
           test -f favicon.svg
           test -f sw.js
+          test -f supabase-cloud-sync.sql
           test -f tests/browser-smoke.mjs
 
       - name: Install Playwright Chromium
