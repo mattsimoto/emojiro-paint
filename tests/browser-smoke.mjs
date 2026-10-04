@@ -28,7 +28,8 @@ async function desktopSmoke(browser) {
   const errors = [];
   const context = await browser.newContext({
     viewport: { width: 1440, height: 1000 },
-    acceptDownloads: true
+    acceptDownloads: true,
+    permissions: ["clipboard-read", "clipboard-write"]
   });
   const page = await context.newPage();
   await loadApp(page, errors);
@@ -56,6 +57,27 @@ async function desktopSmoke(browser) {
   assert.equal(await page.locator("#arrangementOverview .arrangement-card").count(), 4, "Song Map should show four sections");
   assert.equal(await page.locator("#percussionGrid .percussion-cell").count(), 96, "Selected section should show four 24-beat percussion lanes");
   assert.equal(await page.locator("#liveKeyboard .live-key").count(), 13, "Live Keys should span 13 notes");
+  assert.equal(await page.locator("#sectionInstrumentPalette .section-palette-chip").count(), 15, "Section palette should show all instruments");
+
+  await page.locator("#sectionInstrumentPalette .section-palette-chip").first().click();
+  assert.equal(await page.locator("#instrumentBank .instrument-button").first().isDisabled(), true, "Section palette should constrain the instrument bank");
+  await page.click("#sectionPaletteAllBtn");
+  assert.equal(await page.locator("#instrumentBank .instrument-button").first().isDisabled(), false, "All instruments should restore the bank");
+
+  await page.click("#saveSectionMixBtn");
+  assert.match(await page.locator("#sectionMixStatus").textContent(), /Snapshot active/, "Mixer snapshot should save");
+  await page.locator("#instrumentMixer input[type=range]").first().evaluate((el) => {
+    el.value = "20";
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await page.click("#recallSectionMixBtn");
+  assert.equal(await page.locator("#instrumentMixer input[type=range]").first().inputValue(), "100", "Mixer snapshot should recall saved values");
+
+  assert.equal(await page.locator("#compactShareToggle").isChecked(), true, "Compressed share links should default on");
+  await page.click("#shareSongBtn");
+  await page.waitForTimeout(100);
+  const sharedLink = await page.evaluate(() => navigator.clipboard.readText());
+  assert.match(sharedLink, /#songz=|#song=/, "Share button should copy a song link");
 
   await page.click("#insertChordBtn");
   assert(
@@ -91,10 +113,30 @@ async function desktopSmoke(browser) {
   await page.click("#projectsBtn");
   assert.equal(await page.locator("#projectLibraryDialog").evaluate((el) => el.open), true, "Project library should open");
   await page.fill("#projectNameInput", "Browser Smoke Project");
+  await page.click("#generateCloudCodeBtn");
+  assert((await page.locator("#cloudSyncCode").inputValue()).length >= 20, "Cloud sync should generate a strong sync code");
   await page.click("#saveNamedProjectBtn");
   assert.equal(await page.locator("#projectLibraryList .project-entry").count(), 1, "Named project should save locally");
   await page.click("#closeProjectsBtn");
 
+  await page.click("#titleToyBtn");
+  assert(await page.locator("#titleToyStage .title-toy-sprite").count() > 0, "Title toy should create emoji sprites");
+
+  await page.click('.mode-tab[data-panel="toyPanel"]');
+  await page.waitForSelector("#toyPanel.active");
+  assert.equal(await page.locator("#catchGameCanvas").isVisible(), true, "Emoji Catch should be visible");
+  await page.click("#startCatchGameBtn");
+  await page.waitForTimeout(120);
+  assert.match(await page.locator("#catchGameStatus").textContent(), /seconds/, "Emoji Catch should run");
+
+  await page.click("#startRelayBtn");
+  await page.waitForTimeout(80);
+  const activeRelay = page.locator("#rhythmRelayBoard .relay-pad.active");
+  assert.equal(await activeRelay.count(), 1, "Rhythm Relay should light one lane");
+  await activeRelay.click();
+  assert(Number(await page.locator("#relayScore").textContent()) >= 2, "Rhythm Relay should score a correct hit");
+
+  await page.click('.mode-tab[data-panel="musicPanel"]');
   const duration = await page.locator("#songDurationReadout").textContent();
   assert.match(duration, /^\d+:\d{2}$/, "Song Map should show a duration");
 
@@ -118,7 +160,8 @@ async function mobileSmoke(browser) {
   const errors = [];
   const context = await browser.newContext({
     ...devices["Pixel 7"],
-    acceptDownloads: true
+    acceptDownloads: true,
+    permissions: ["clipboard-read", "clipboard-write"]
   });
   const page = await context.newPage();
   trackErrors(page, errors, "mobile");
@@ -131,6 +174,12 @@ async function mobileSmoke(browser) {
   await page.waitForSelector("#musicPanel.active");
   assert.equal(await page.locator("#arrangementOverview .arrangement-card").count(), 4, "Mobile Song Map should render");
   assert.equal(await page.locator("#liveKeyboard .live-key").count(), 13, "Mobile Live Keys should render");
+  assert.equal(await page.locator("#sectionInstrumentPalette .section-palette-chip").count(), 15, "Mobile section palette should render");
+
+  await page.click('.mode-tab[data-panel="toyPanel"]');
+  await page.waitForSelector("#toyPanel.active");
+  assert.equal(await page.locator("#rhythmRelayBoard .relay-pad").count(), 4, "Mobile Rhythm Relay should render four pads");
+  await page.click('.mode-tab[data-panel="musicPanel"]');
 
   const bodyOverflow = await page.evaluate(() => ({
     scrollWidth: document.documentElement.scrollWidth,
