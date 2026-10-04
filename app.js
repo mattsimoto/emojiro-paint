@@ -1,4 +1,4 @@
-(() => {
+(async () => {
   "use strict";
 
   const COLS = 32;
@@ -97,6 +97,31 @@
     const binary = atob(padded);
     const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
     return new TextDecoder().decode(bytes);
+  }
+
+  function bytesToBase64Url(bytes) {
+    let binary = "";
+    for (let i = 0; i < bytes.length; i += 1) binary += String.fromCharCode(bytes[i]);
+    return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+  }
+
+  function base64UrlToBytes(value) {
+    const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized + "=".repeat((4 - normalized.length % 4) % 4);
+    const binary = atob(padded);
+    return Uint8Array.from(binary, (char) => char.charCodeAt(0));
+  }
+
+  async function gzipText(text) {
+    if (typeof CompressionStream === "undefined") return null;
+    const stream = new Blob([text]).stream().pipeThrough(new CompressionStream("gzip"));
+    return new Uint8Array(await new Response(stream).arrayBuffer());
+  }
+
+  async function gunzipText(bytes) {
+    if (typeof DecompressionStream === "undefined") throw new Error("Compressed links are not supported in this browser");
+    const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
+    return new Response(stream).text();
   }
 
   async function copyText(text) {
@@ -2933,8 +2958,28 @@
       });
     });
 
+    const compactPalettes = sectionInstrumentPalettes.map((palette) =>
+      Array.isArray(palette)
+        ? palette.map((id) => INSTRUMENTS.findIndex((instrument) => instrument.id === id)).filter((index) => index >= 0)
+        : null
+    );
+    const compactSnapshots = sectionMixerSnapshots.map((snapshot) => {
+      if (!snapshot) return null;
+      return INSTRUMENTS.map((instrument) => {
+        const mix = snapshot[instrument.id] || {};
+        return [
+          Math.round((Number(mix.volume) || 0) * 100),
+          mix.mute ? 1 : 0,
+          mix.solo ? 1 : 0,
+          Math.round((Number(mix.pan) || 0) * 100),
+          Math.round((Number(mix.filter) || 0) * 100),
+          Math.round((Number(mix.delay) || 0) * 100)
+        ];
+      });
+    });
+
     return {
-      v: 2,
+      v: 3,
       n: ($("#songName").value || "My Emoji Song").slice(0, 40),
       t: Number($("#tempoSlider").value),
       m: timeSignature,
@@ -2943,6 +2988,8 @@
       sl: sectionLoopEnabled ? 1 : 0,
       s: sectionNames.slice(),
       st: sectionTempoOverrides.map((value) => value == null ? 0 : Number(value)),
+      sp: compactPalettes,
+      sm: compactSnapshots,
       h: humanizeMs,
       p: percussion,
       x: placements,
@@ -3001,6 +3048,29 @@
       sectionTempoOverrides: Array.isArray(compact.st)
         ? compact.st.slice(0, SECTION_COUNT).map((value) => Number(value) >= 40 ? Number(value) : null)
         : Array(SECTION_COUNT).fill(null),
+      sectionInstrumentPalettes: Array.from({ length: SECTION_COUNT }, (_, section) => {
+        const palette = Array.isArray(compact.sp) ? compact.sp[section] : null;
+        return Array.isArray(palette)
+          ? palette.map((index) => INSTRUMENTS[Number(index)]?.id).filter(Boolean)
+          : null;
+      }),
+      sectionMixerSnapshots: Array.from({ length: SECTION_COUNT }, (_, section) => {
+        const savedSnapshot = Array.isArray(compact.sm) ? compact.sm[section] : null;
+        if (!Array.isArray(savedSnapshot)) return null;
+        const snapshot = {};
+        INSTRUMENTS.forEach((instrument, index) => {
+          const saved = savedSnapshot[index] || [];
+          snapshot[instrument.id] = {
+            volume: Math.max(0, Math.min(1, Number(saved[0]) / 100 || 0)),
+            mute: Boolean(saved[1]),
+            solo: Boolean(saved[2]),
+            pan: Math.max(-1, Math.min(1, Number(saved[3]) / 100 || 0)),
+            filter: Math.max(0, Math.min(1, Number(saved[4]) / 100 || 0)),
+            delay: Math.max(0, Math.min(1, Number(saved[5]) / 100 || 0))
+          };
+        });
+        return snapshot;
+      }),
       percussion: sharedPercussion,
       humanizeMs: Math.max(0, Math.min(60, Number(compact.h) || 0)),
       steps: SEQ_STEPS,
@@ -3009,20 +3079,38 @@
     };
   }
 
-  function sharedSongUrl() {
-    const encoded = encodeBase64Url(JSON.stringify(compactSongForShare()));
+  async function sharedSongUrl() {
+    const json = JSON.stringify(compactSongForShare());
     const url = new URL(location.href);
-    url.hash = "song=" + encoded;
+    const wantsCompression = $("#compactShareToggle").checked;
+
+    if (wantsCompression) {
+      const compressed = await gzipText(json);
+      if (compressed && compressed.length < new TextEncoder().encode(json).length) {
+        url.hash = "songz=" + bytesToBase64Url(compressed);
+        return url.toString();
+      }
+    }
+
+    url.hash = "song=" + encodeBase64Url(json);
     return url.toString();
   }
 
-  function loadSongFromHash() {
-    if (!location.hash.startsWith("#song=")) return false;
+  async function loadSongFromHash() {
+    const compressed = location.hash.startsWith("#songz=");
+    const plain = location.hash.startsWith("#song=");
+    if (!compressed && !plain) return false;
+
     try {
-      const encoded = location.hash.slice(6);
-      const compact = JSON.parse(decodeBase64Url(encoded));
+      let json;
+      if (compressed) {
+        json = await gunzipText(base64UrlToBytes(location.hash.slice(7)));
+      } else {
+        json = decodeBase64Url(location.hash.slice(6));
+      }
+      const compact = JSON.parse(json);
       applySong(songFromCompactShare(compact));
-      toast("Shared song loaded");
+      toast(compressed ? "Compressed shared song loaded" : "Shared song loaded");
       return true;
     } catch (error) {
       toast("Shared song link could not be loaded");
@@ -3033,7 +3121,7 @@
   function songPayload() {
     return {
       format: "emojiro-paint-song",
-      version: 7,
+      version: 8,
       name: $("#songName").value || "My Emoji Song",
       tempo: Number($("#tempoSlider").value),
       timeSignature,
@@ -3484,7 +3572,7 @@
 
   $("#shareSongBtn").addEventListener("click", async () => {
     try {
-      const url = sharedSongUrl();
+      const url = await sharedSongUrl();
       await copyText(url);
       toast("Shareable song link copied");
     } catch (error) {
@@ -4302,7 +4390,7 @@
   updateComposerButtons();
   renderSequencer();
 
-  const sharedSongLoaded = loadSongFromHash();
+  const sharedSongLoaded = await loadSongFromHash();
   const recovered = sharedSongLoaded ? false : recoverAutosave();
   if (!recovered) saveAutosave(true);
   setInterval(() => saveAutosave(), 7000);
