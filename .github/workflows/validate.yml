@@ -38,6 +38,7 @@ jobs:
           test -f composer.css
           test -f project-library.css
           test -f toybox.css
+          test -f upcycle-theme.css
           test -f app.js
           test -f manifest.webmanifest
           test -f favicon.svg
