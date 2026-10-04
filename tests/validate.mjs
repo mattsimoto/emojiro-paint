@@ -73,6 +73,27 @@ const requiredIds = [
   "projectLibraryList",
   "saveNamedProjectBtn",
   "importProjectInput",
+  "sectionInstrumentPalette",
+  "sectionPaletteAllBtn",
+  "saveSectionMixBtn",
+  "recallSectionMixBtn",
+  "clearSectionMixBtn",
+  "sectionMixStatus",
+  "compactShareToggle",
+  "cloudProjectUrl",
+  "cloudPublishableKey",
+  "cloudSyncCode",
+  "generateCloudCodeBtn",
+  "pushCloudLibraryBtn",
+  "pullCloudLibraryBtn",
+  "titleToyBtn",
+  "titleToyStage",
+  "toyPanel",
+  "titleBurstBtn",
+  "catchGameCanvas",
+  "startCatchGameBtn",
+  "rhythmRelayBoard",
+  "startRelayBtn",
   "sequencer"
 ];
 
@@ -95,7 +116,8 @@ const requiredJsMarkers = [
   "sectionTempoOverrides",
   "percussionPattern",
   "humanizeMs",
-  "version: 7"
+  "version: 8",
+  "function renderSectionSoundSettings"
 ];
 
 const missingMarkers = requiredJsMarkers.filter((marker) => !js.includes(marker));
