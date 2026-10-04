@@ -47,7 +47,8 @@ Emojiro Paint is a touch-friendly browser creativity toy inspired by classic con
 ### 🎵 Emoji Composer
 
 - 96-beat staff-style composer spanning B3–G5
-- 15 emoji instruments with synthesized melodic, animal, percussion, organ, guitar, and bass voices
+- Identity-based examples include 🐶 Dog Bark, 🐮 Cow Moo, 🐸 Frog Croak, 🐘 Elephant Trumpet, 🐝 Bee Buzz, 🐺 Wolf Howl, 🚂 Train Chug, 🚁 Helicopter Chop, 🚀 Rocket Launch, 🚢 Ship Horn, 🚗 Car Horn, 🔔 Bell Ring, 🎸 Guitar Strum, 🎹 Piano Key, 🎻 Violin Bow, 🥁 Snare Drum, 👻 Ghost Wail, and 💧 Water Drop
+- 43 emoji instruments with identity-based synthesized voices spanning animals, vehicles, bells, musical instruments, game sounds, and effects
 - Tempo from 40–480 BPM
 - 3/4 and 4/4 time signatures
 - Up to three simultaneous notes per beat
@@ -65,7 +66,7 @@ Emojiro Paint is a touch-friendly browser creativity toy inspired by classic con
 - Optional drag-to-paint note entry for mouse, pen, and touch
 - 13-note on-screen Live Keys keyboard spanning B3–G5
 - Quantized live recording into the current beat with one-undo take grouping
-- Four independent percussion lanes with editable 24-beat section grids and rhythm presets
+- Four independent percussion lanes using 🍄 kick, 🥁 snare, ⏰ tick, and 🎮 zap voices, with editable 24-beat section grids and rhythm presets
 - Pattern Lab random melody generation using the active scale guide and adjustable density
 - Deterministic 0–60 ms humanization applied consistently to playback, MIDI, WAV, and music-video timing
 - Per-instrument volume, mute, solo, stereo pan, tone filter, and echo controls
