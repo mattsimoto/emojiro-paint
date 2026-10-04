@@ -94,6 +94,7 @@ const requiredIds = [
   "startCatchGameBtn",
   "rhythmRelayBoard",
   "startRelayBtn",
+  "themeToggleBtn",
   "musicToolsToggle",
   "moreModeMenu",
   "mobileProjectsBtn",
