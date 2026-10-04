@@ -497,3 +497,465 @@ input[type="range"] {
     background: var(--ink);
   }
 }
+
+
+/* Dark mode: explicit high-contrast surfaces and control states. */
+html[data-theme="dark"] {
+  --bg: #0f1110;
+  --panel: #171a18;
+  --panel-2: #222620;
+  --ink: #f4f6ef;
+  --muted: #aeb4aa;
+  --orange: #c8f84d;
+  --orange-dark: #9fc735;
+  --yellow: #dfff83;
+  --blue: #aabaff;
+  --green: #9bd9a8;
+  --red: #ff8378;
+  --shadow: 0 16px 38px rgba(0,0,0,.34);
+  --border: 1.5px solid #e3e7dd;
+  --grid: rgba(244,246,239,.13);
+  background: var(--bg);
+}
+
+html[data-theme="dark"] body {
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 18% -5%, rgba(200,248,77,.06), transparent 34%),
+    var(--bg);
+}
+
+html[data-theme="dark"] .brand-mark {
+  border-color: #10130f;
+  background: var(--orange);
+  color: #10130f;
+}
+
+html[data-theme="dark"] .brand p,
+html[data-theme="dark"] .panel-heading p,
+html[data-theme="dark"] .music-hint,
+html[data-theme="dark"] .section-strip-label,
+html[data-theme="dark"] .section-button span,
+html[data-theme="dark"] .section-editor-head span,
+html[data-theme="dark"] .mixer-card > p,
+html[data-theme="dark"] .composer-demo span,
+html[data-theme="dark"] .pattern-lab-head span,
+html[data-theme="dark"] .percussion-head span,
+html[data-theme="dark"] .arrangement-overview-head span,
+html[data-theme="dark"] .project-entry-meta,
+html[data-theme="dark"] .cloud-sync-card > p,
+html[data-theme="dark"] .cloud-sync-note,
+html[data-theme="dark"] .toy-card p,
+html[data-theme="dark"] .toy-title-card p {
+  color: var(--muted);
+}
+
+html[data-theme="dark"] .card,
+html[data-theme="dark"] dialog,
+html[data-theme="dark"] .more-mode-menu-popover {
+  border-color: #d9ded4;
+  background: rgba(23,26,24,.97);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+}
+
+html[data-theme="dark"] dialog::backdrop {
+  background: rgba(0,0,0,.72);
+}
+
+html[data-theme="dark"] .mode-tab,
+html[data-theme="dark"] .more-mode-menu > summary,
+html[data-theme="dark"] .button,
+html[data-theme="dark"] .tool-button,
+html[data-theme="dark"] .instrument-button,
+html[data-theme="dark"] .stamp-button,
+html[data-theme="dark"] .frame-thumb,
+html[data-theme="dark"] .mute-button,
+html[data-theme="dark"] .solo-button,
+html[data-theme="dark"] .live-key,
+html[data-theme="dark"] .percussion-cell,
+html[data-theme="dark"] .percussion-step,
+html[data-theme="dark"] .section-button {
+  border-color: #d9ded4;
+  background: #222623;
+  color: #f7f8f4;
+}
+
+html[data-theme="dark"] .mode-tab:hover,
+html[data-theme="dark"] .more-mode-menu > summary:hover,
+html[data-theme="dark"] .button:hover,
+html[data-theme="dark"] .tool-button:hover,
+html[data-theme="dark"] .instrument-button:hover,
+html[data-theme="dark"] .section-button:hover,
+html[data-theme="dark"] .live-key:hover {
+  background: #303530;
+  color: #fff;
+}
+
+html[data-theme="dark"] .mode-tab.active,
+html[data-theme="dark"] .button.primary,
+html[data-theme="dark"] .instrument-button.active,
+html[data-theme="dark"] .tool-button.active,
+html[data-theme="dark"] .stamp-button.active,
+html[data-theme="dark"] .frame-thumb.active,
+html[data-theme="dark"] .section-button.active,
+html[data-theme="dark"] .live-key.active,
+html[data-theme="dark"] .live-key:active,
+html[data-theme="dark"] .percussion-cell.active,
+html[data-theme="dark"] .music-tools-toggle[aria-pressed="true"],
+html[data-theme="dark"] .toggle-button.active,
+html[data-theme="dark"] .time-button.active,
+html[data-theme="dark"] #endMarkerBtn.active {
+  border-color: var(--orange);
+  background: var(--orange);
+  color: #11130f;
+  outline-color: var(--orange);
+}
+
+html[data-theme="dark"] .section-button.active span,
+html[data-theme="dark"] .section-button.active .tempo-badge {
+  color: #28300f;
+}
+
+html[data-theme="dark"] .button.primary:hover,
+html[data-theme="dark"] .instrument-button.active:hover,
+html[data-theme="dark"] .section-button.active:hover {
+  background: #d7ff6d;
+  color: #0d0f0c;
+}
+
+html[data-theme="dark"] .button.danger,
+html[data-theme="dark"] .mute-button.active {
+  border-color: #ff9b91;
+  background: #5c2927;
+  color: #fff0ee;
+}
+
+html[data-theme="dark"] button:disabled,
+html[data-theme="dark"] .button:disabled,
+html[data-theme="dark"] .instrument-button:disabled,
+html[data-theme="dark"] input:disabled,
+html[data-theme="dark"] select:disabled {
+  opacity: .46;
+  color: #c6cbc3;
+  cursor: not-allowed;
+}
+
+html[data-theme="dark"] .instrument-button.section-disabled {
+  opacity: .34;
+  color: #b8beb6;
+  filter: grayscale(.35);
+}
+
+html[data-theme="dark"] input,
+html[data-theme="dark"] select,
+html[data-theme="dark"] textarea {
+  border-color: #bfc5bc;
+  background: #101310;
+  color: #f6f8f2;
+  color-scheme: dark;
+}
+
+html[data-theme="dark"] input::placeholder,
+html[data-theme="dark"] textarea::placeholder {
+  color: #878d85;
+  opacity: 1;
+}
+
+html[data-theme="dark"] input[type="range"] {
+  accent-color: var(--orange);
+}
+
+html[data-theme="dark"] output {
+  color: #f4f6ef;
+}
+
+html[data-theme="dark"] .status-pill,
+html[data-theme="dark"] .song-duration,
+html[data-theme="dark"] .toy-score {
+  border-color: var(--orange);
+  background: var(--orange);
+  color: #10130f;
+}
+
+html[data-theme="dark"] .music-toolbar {
+  background: rgba(23,26,24,.97);
+}
+
+html[data-theme="dark"] .instrument-card,
+html[data-theme="dark"] .sequencer-card {
+  background: #171a18;
+}
+
+html[data-theme="dark"] .sequencer-scroll {
+  border-color: #d9ded4;
+  background: #111411;
+}
+
+html[data-theme="dark"] .seq-label {
+  border-right-color: #d9ded4;
+  background: #252a25;
+  color: #f5f7f1;
+  box-shadow: 2px 0 0 rgba(255,255,255,.04);
+}
+
+html[data-theme="dark"] .seq-step {
+  background: #1d211d;
+  color: #dce1d8;
+}
+
+html[data-theme="dark"] .seq-corner {
+  border-color: #d9ded4;
+  background: var(--orange);
+}
+
+html[data-theme="dark"] .seq-cell,
+html[data-theme="dark"] .seq-cell.staff-line {
+  color: #fff;
+  background-color: #171b17;
+}
+
+html[data-theme="dark"] .seq-cell.staff-line {
+  background:
+    linear-gradient(to bottom, transparent 47%, rgba(244,246,239,.18) 47%, rgba(244,246,239,.18) 53%, transparent 53%),
+    #171b17;
+}
+
+html[data-theme="dark"] .seq-cell:hover {
+  background-color: #272d27;
+}
+
+html[data-theme="dark"] .seq-cell.playing {
+  background: #35451d;
+  box-shadow: inset 0 0 0 2px var(--orange);
+}
+
+html[data-theme="dark"] .seq-step.section-selected {
+  background: #30372b;
+}
+
+html[data-theme="dark"] .seq-cell.section-selected:not(.edit-measure):not(.playing) {
+  background-color: #20291a;
+}
+
+html[data-theme="dark"] .seq-step.edit-measure,
+html[data-theme="dark"] .seq-cell.edit-measure {
+  background-color: #38351d;
+}
+
+html[data-theme="dark"] .seq-cell.staff-line.edit-measure {
+  background:
+    linear-gradient(to bottom, transparent 47%, rgba(244,246,239,.18) 47%, rgba(244,246,239,.18) 53%, transparent 53%),
+    #38351d;
+}
+
+html[data-theme="dark"] .seq-cell.after-end,
+html[data-theme="dark"] .seq-cell.after-end:hover {
+  background-color: #111411;
+  color: #777d76;
+  opacity: .52;
+}
+
+html[data-theme="dark"] .seq-step.end-step {
+  background: #4a2925;
+  box-shadow: inset -4px 0 0 var(--red);
+}
+
+html[data-theme="dark"] .playhead-strip {
+  border-bottom-color: rgba(244,246,239,.26);
+}
+
+html[data-theme="dark"] .section-settings,
+html[data-theme="dark"] .section-palette-editor,
+html[data-theme="dark"] .section-mix-snapshot,
+html[data-theme="dark"] .mixer-channel,
+html[data-theme="dark"] .arrangement-card,
+html[data-theme="dark"] .cloud-sync-card,
+html[data-theme="dark"] .project-entry,
+html[data-theme="dark"] .saved-project-card {
+  border-color: #8e968b;
+  background: #1d211e;
+  color: var(--ink);
+}
+
+html[data-theme="dark"] .arrangement-card.active {
+  border-color: var(--orange);
+  background: #29341b;
+  outline-color: var(--orange);
+}
+
+html[data-theme="dark"] .arrangement-card-meta span {
+  border-color: #697067;
+  background: #282d29;
+  color: #dfe4dc;
+}
+
+html[data-theme="dark"] .arrangement-beat {
+  background: #303530;
+}
+
+html[data-theme="dark"] .arrangement-beat.melody,
+html[data-theme="dark"] .arrangement-beat.both {
+  background: #879bf1;
+}
+
+html[data-theme="dark"] .section-palette-chip {
+  border-color: #aeb5ab;
+  background: #222623;
+  color: #f4f6ef;
+}
+
+html[data-theme="dark"] .section-palette-chip.active {
+  border-color: var(--orange);
+  background: var(--orange);
+  color: #10130f;
+  box-shadow: none;
+}
+
+html[data-theme="dark"] .mixer-control,
+html[data-theme="dark"] .mixer-effect,
+html[data-theme="dark"] .project-library-note,
+html[data-theme="dark"] #cloudSyncStatus {
+  color: var(--muted);
+}
+
+html[data-theme="dark"] .mixer-effect {
+  border-top-color: #565d55;
+}
+
+html[data-theme="dark"] .solo-button.active {
+  border-color: var(--blue);
+  background: #2a3150;
+  color: #dfe5ff;
+  outline-color: var(--blue);
+}
+
+html[data-theme="dark"] .percussion-label {
+  border-color: #bfc5bc;
+  background: #282d27;
+  color: #f4f6ef;
+}
+
+html[data-theme="dark"] .percussion-cell.measure {
+  border-left-color: var(--blue);
+}
+
+html[data-theme="dark"] .percussion-cell.playing {
+  outline-color: var(--orange);
+}
+
+html[data-theme="dark"] .live-key span {
+  color: #aeb4aa;
+}
+
+html[data-theme="dark"] .relay-pad {
+  border-color: #d9ded4;
+  background: #222623;
+  color: #fff;
+  box-shadow: 0 4px 0 #070807;
+}
+
+html[data-theme="dark"] .relay-pad.active {
+  border-color: var(--orange);
+  background: var(--orange);
+  color: #10130f;
+  box-shadow: 0 1px 0 #070807;
+}
+
+html[data-theme="dark"] .relay-pad.hit {
+  background: #24502e;
+  color: #effff1;
+}
+
+html[data-theme="dark"] .relay-pad.miss {
+  background: #5b2928;
+  color: #fff0ef;
+}
+
+html[data-theme="dark"] .relay-meter {
+  border-color: #d9ded4;
+  background: #282d29;
+}
+
+html[data-theme="dark"] .relay-meter span {
+  background: var(--orange);
+}
+
+html[data-theme="dark"] .canvas-frame {
+  background: #222720;
+}
+
+html[data-theme="dark"] #paintCanvas,
+html[data-theme="dark"] .frame-thumb {
+  background: #fff;
+}
+
+html[data-theme="dark"] .toolbox,
+html[data-theme="dark"] .frame-strip {
+  background: #171a18;
+}
+
+html[data-theme="dark"] .color-swatch {
+  border-color: #d9ded4;
+}
+
+html[data-theme="dark"] .stamp-button {
+  background: #252a25;
+}
+
+html[data-theme="dark"] .stamp-button.active {
+  border-color: var(--orange);
+  background: #35451d;
+}
+
+html[data-theme="dark"] .theme-toggle {
+  min-width: 84px;
+  justify-content: center;
+  border-color: #c8cec4;
+  background: #222623;
+  color: #f6f8f2;
+}
+
+html[data-theme="dark"] .theme-toggle:hover {
+  background: #303530;
+}
+
+html[data-theme="dark"] :focus-visible {
+  outline: 3px solid var(--orange);
+  outline-offset: 2px;
+}
+
+html[data-theme="dark"] a {
+  color: #d9ff78;
+}
+
+html[data-theme="dark"] code {
+  color: #e5ff94;
+}
+
+@media (max-width: 640px) {
+  html[data-theme="dark"] .music-toolbar {
+    background: rgba(23,26,24,.97);
+    box-shadow: 0 8px 24px rgba(0,0,0,.3);
+  }
+
+  html[data-theme="dark"] .instrument-button {
+    border-color: #777f75;
+    background: #222623;
+  }
+
+  html[data-theme="dark"] .instrument-button.active {
+    border-color: var(--orange);
+    background: var(--orange);
+    color: #10130f;
+  }
+
+  .theme-toggle {
+    min-width: 42px;
+    padding-inline: 9px;
+  }
+
+  .theme-toggle-label {
+    display: none;
+  }
+}
