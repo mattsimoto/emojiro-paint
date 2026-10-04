@@ -186,6 +186,11 @@ async function mobileSmoke(browser) {
   assert.equal(await page.locator("#liveKeyboard .live-key").count(), 13, "Mobile Live Keys should render");
   assert.equal(await page.locator("#arrangementOverview").isVisible(), false, "Mobile advanced cards should stay hidden by default");
   assert.equal(await page.locator("#sequencer").evaluate((el) => el.classList.contains("compact")), true, "Mobile composer should start compact");
+  assert.equal(await page.locator("#sequencer .seq-step").count(), 24, "Mobile composer should show one 24-beat section");
+
+  await page.locator("#sectionBar .section-button").nth(1).click();
+  assert.equal(await page.locator("#sequencer .seq-step").count(), 24, "Changing sections should keep the mobile staff at 24 beats");
+  assert.equal((await page.locator("#sequencer .seq-step").first().textContent()).trim(), "25", "Section B should start at beat 25");
 
   await page.locator("#moreModeMenu summary").click();
   await page.click('.mode-tab[data-panel="toyPanel"]');
