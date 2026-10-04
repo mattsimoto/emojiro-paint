@@ -18,7 +18,7 @@ async function loadApp(page, errors) {
   trackErrors(page, errors, "app");
   const response = await page.goto(BASE_URL, { waitUntil: "networkidle" });
   assert(response && response.ok(), "App did not return a successful HTTP response");
-  await page.waitForSelector("#paintCanvas");
+  await page.waitForSelector("#musicPanel.active");
   assert.equal(await page.title(), "Emojiro Paint");
   await page.waitForTimeout(250);
   assert.deepEqual(errors, [], "Startup browser errors occurred:\n" + errors.join("\n"));
@@ -34,7 +34,14 @@ async function desktopSmoke(browser) {
   const page = await context.newPage();
   await loadApp(page, errors);
 
-  assert.equal(await page.locator("#paintCanvas").isVisible(), true, "Paint canvas should be visible");
+  assert.equal(await page.locator("#musicPanel").isVisible(), true, "Music Maker should be the default screen");
+  assert.equal(await page.locator("#paintPanel").isVisible(), false, "Visual tools should start out of the way");
+  assert.equal(await page.locator("#arrangementOverview").isVisible(), false, "Advanced music cards should start collapsed");
+
+  await page.locator("#moreModeMenu summary").click();
+  await page.click('.mode-tab[data-panel="paintPanel"]');
+  await page.waitForSelector("#paintPanel.active");
+  assert.equal(await page.locator("#paintCanvas").isVisible(), true, "Visual tools should remain available from More");
   assert.equal(await page.locator("#frameList .frame-thumb").count(), 1, "Fresh project should start with one frame");
 
   const canvas = page.locator("#paintCanvas");
@@ -52,6 +59,9 @@ async function desktopSmoke(browser) {
 
   await page.click('.mode-tab[data-panel="musicPanel"]');
   await page.waitForSelector("#musicPanel.active");
+  assert.equal(await page.locator("#musicToolsToggle").getAttribute("aria-pressed"), "false", "Advanced tools should start closed");
+  await page.click("#musicToolsToggle");
+  assert.equal(await page.locator("#musicToolsToggle").getAttribute("aria-pressed"), "true", "Tools button should reveal advanced controls");
 
   assert.equal(await page.locator("#instrumentBank button").count(), 15, "All 15 instruments should render");
   assert.equal(await page.locator("#arrangementOverview .arrangement-card").count(), 4, "Song Map should show four sections");
@@ -169,18 +179,20 @@ async function mobileSmoke(browser) {
 
   const response = await page.goto(BASE_URL, { waitUntil: "networkidle" });
   assert(response && response.ok(), "Mobile app load failed");
-  await page.waitForSelector("#paintCanvas");
-
-  await page.click('.mode-tab[data-panel="musicPanel"]');
   await page.waitForSelector("#musicPanel.active");
+  assert.equal(await page.locator("#musicPanel").isVisible(), true, "Mobile should open directly to Music");
+  assert.equal(await page.locator("#paintPanel").isVisible(), false, "Mobile visual tools should be secondary");
   assert.equal(await page.locator("#arrangementOverview .arrangement-card").count(), 4, "Mobile Song Map should render");
   assert.equal(await page.locator("#liveKeyboard .live-key").count(), 13, "Mobile Live Keys should render");
-  assert.equal(await page.locator("#sectionInstrumentPalette .section-palette-chip").count(), 15, "Mobile section palette should render");
+  assert.equal(await page.locator("#arrangementOverview").isVisible(), false, "Mobile advanced cards should stay hidden by default");
+  assert.equal(await page.locator("#sequencer").evaluate((el) => el.classList.contains("compact")), true, "Mobile composer should start compact");
 
+  await page.locator("#moreModeMenu summary").click();
   await page.click('.mode-tab[data-panel="toyPanel"]');
   await page.waitForSelector("#toyPanel.active");
   assert.equal(await page.locator("#rhythmRelayBoard .relay-pad").count(), 4, "Mobile Rhythm Relay should render four pads");
   await page.click('.mode-tab[data-panel="musicPanel"]');
+  await page.waitForSelector("#musicPanel.active");
 
   const bodyOverflow = await page.evaluate(() => ({
     scrollWidth: document.documentElement.scrollWidth,
@@ -190,9 +202,6 @@ async function mobileSmoke(browser) {
     bodyOverflow.scrollWidth <= bodyOverflow.innerWidth + 2,
     "Page body overflows mobile viewport: " + JSON.stringify(bodyOverflow)
   );
-
-  await page.click("#compactComposerToggle");
-  assert.equal(await page.locator("#sequencer").evaluate((el) => el.classList.contains("compact")), true, "Compact composer should activate");
 
   await page.waitForTimeout(100);
   assert.deepEqual(errors, [], "Mobile browser errors occurred:\n" + errors.join("\n"));
