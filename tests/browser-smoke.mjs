@@ -64,6 +64,15 @@ async function desktopSmoke(browser) {
   assert.equal(await page.locator("#musicToolsToggle").getAttribute("aria-pressed"), "true", "Tools button should reveal advanced controls");
 
   assert.equal(await page.locator("#instrumentBank button").count(), 55, "All 55 instruments should render");
+  assert.equal(
+    await page.evaluate(() => {
+      const grid = document.querySelector("#sequencerScroll");
+      const sections = document.querySelector("#sectionBar");
+      return Boolean(grid && sections && (grid.compareDocumentPosition(sections) & Node.DOCUMENT_POSITION_FOLLOWING));
+    }),
+    true,
+    "Section buttons should sit below the sequencer grid"
+  );
   for (const label of ["Cow Moo", "Ship Horn", "Bell Ring", "Violin Bow", "Vocal Ah", "Laugh", "Scream", "Hmm"]) {
     const instrument = page.locator('#instrumentBank .instrument-button[aria-label="' + label + '"]');
     assert.equal(await instrument.count(), 1, label + " should be available");
@@ -194,6 +203,15 @@ async function mobileSmoke(browser) {
   assert.equal(await page.locator("#arrangementOverview").isVisible(), false, "Mobile advanced cards should stay hidden by default");
   assert.equal(await page.locator("#sequencer").evaluate((el) => el.classList.contains("compact")), true, "Mobile composer should start compact");
   assert.equal(await page.locator("#sequencer .seq-step").count(), 24, "Mobile composer should show one 24-beat section");
+  assert.equal(
+    await page.evaluate(() => {
+      const grid = document.querySelector("#sequencerScroll");
+      const sections = document.querySelector("#sectionBar");
+      return Boolean(grid && sections && (grid.compareDocumentPosition(sections) & Node.DOCUMENT_POSITION_FOLLOWING));
+    }),
+    true,
+    "Mobile section row should remain below the music grid"
+  );
 
   await page.locator("#sectionBar .section-button").nth(1).click();
   assert.equal(await page.locator("#sequencer .seq-step").count(), 24, "Changing sections should keep the mobile staff at 24 beats");
