@@ -1029,3 +1029,609 @@ html[data-theme="dark"] .theme-toggle[aria-pressed="true"] {
   background: #222623;
   color: #f6f8f2;
 }
+
+
+/* COLOR-RICH UPCYCLE PASS */
+
+:root {
+  --aria-cream: #f7f0df;
+  --aria-cyan: #52c7c9;
+  --aria-sky: #6bc2e7;
+  --aria-pink: #f2a0cc;
+  --aria-purple: #b99adf;
+  --aria-mint: #86e0a6;
+  --aria-orange: #ff9f28;
+  --aria-yellow: #ffd62e;
+  --aria-ink: #111a26;
+  --aria-soft-cream: #efe8d7;
+
+  --bg: var(--aria-cyan);
+  --panel: var(--aria-cream);
+  --panel-2: var(--aria-soft-cream);
+  --ink: var(--aria-ink);
+  --muted: #535b63;
+  --orange: var(--aria-yellow);
+  --orange-dark: #d5aa00;
+  --yellow: #ffe26e;
+  --blue: var(--aria-sky);
+  --green: var(--aria-mint);
+  --red: #ff7c79;
+  --shadow: 0 10px 0 rgba(17,26,38,.16);
+  --border: 3px solid var(--aria-ink);
+  --grid: rgba(17,26,38,.12);
+}
+
+body {
+  background:
+    linear-gradient(
+      to bottom,
+      var(--aria-cream) 0 92px,
+      var(--aria-ink) 92px 99px,
+      var(--aria-cyan) 99px 320px,
+      var(--aria-ink) 320px 327px,
+      var(--aria-sky) 327px 100%
+    );
+  background-attachment: fixed;
+}
+
+.app-shell {
+  padding-top: 0;
+}
+
+.topbar {
+  min-height: 92px;
+  margin-inline: calc(clamp(12px, 2vw, 28px) * -1);
+  padding: 14px clamp(12px, 2vw, 28px) 10px;
+  background: var(--aria-cream);
+}
+
+.brand h1,
+.panel-heading h2,
+.section-strip-label,
+.more-mode-menu > summary,
+.mode-tab,
+.button,
+.status-pill,
+.section-button strong {
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  letter-spacing: .08em;
+}
+
+.brand h1 {
+  font-size: clamp(24px, 3vw, 34px);
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.brand-mark {
+  border-width: 3px;
+  border-radius: 50%;
+  background: #ff4f93;
+  box-shadow: none;
+}
+
+.primary-nav {
+  margin-inline: calc(clamp(12px, 2vw, 28px) * -1);
+  padding: 20px clamp(12px, 2vw, 28px);
+  background: var(--aria-cyan);
+  border-top: 0;
+  border-bottom: 6px solid var(--aria-ink);
+}
+
+.primary-nav > .mode-tab,
+.more-mode-menu > summary {
+  border: 0;
+  background: transparent;
+  color: var(--aria-ink);
+  box-shadow: none;
+  text-transform: uppercase;
+}
+
+.mode-tab.active {
+  background: var(--aria-pink);
+  color: var(--aria-ink);
+  border: 3px solid var(--aria-ink);
+}
+
+.mode-tab:hover,
+.more-mode-menu > summary:hover {
+  background: rgba(247,240,223,.42);
+}
+
+.more-mode-menu-popover {
+  border: 3px solid var(--aria-ink);
+  background: var(--aria-cream);
+  box-shadow: 8px 8px 0 rgba(17,26,38,.22);
+}
+
+main {
+  padding: clamp(12px, 2vw, 26px) 0 28px;
+}
+
+.panel {
+  border-radius: 38px;
+}
+
+.music-panel {
+  padding: clamp(12px, 2vw, 22px);
+  border: 4px solid var(--aria-ink);
+  border-radius: 36px;
+  background: var(--aria-cream);
+  box-shadow: 0 14px 0 rgba(17,26,38,.16);
+}
+
+.panel-heading {
+  margin-bottom: 16px;
+}
+
+.panel-heading h2 {
+  color: var(--aria-ink);
+  text-transform: uppercase;
+}
+
+.status-pill {
+  border: 3px solid var(--aria-ink);
+  background: var(--aria-mint);
+  color: var(--aria-ink);
+}
+
+.card {
+  border: 3px solid var(--aria-ink);
+  border-radius: 20px;
+  box-shadow: 5px 5px 0 rgba(17,26,38,.12);
+}
+
+.music-toolbar {
+  background: var(--aria-sky);
+}
+
+.music-toolbar .button {
+  border: 2px solid var(--aria-ink);
+}
+
+#playMusicBtn {
+  background: var(--aria-mint);
+  color: var(--aria-ink);
+}
+
+#undoMusicBtn {
+  background: var(--aria-yellow);
+  color: var(--aria-ink);
+}
+
+#musicToolsToggle {
+  background: var(--aria-pink);
+  color: var(--aria-ink);
+}
+
+#musicToolsToggle[aria-pressed="true"] {
+  background: var(--aria-purple);
+  color: var(--aria-ink);
+}
+
+.theme-toggle {
+  border: 3px solid var(--aria-ink);
+  background: var(--aria-yellow);
+  color: var(--aria-ink);
+}
+
+#projectsBtn {
+  border: 3px solid var(--aria-ink);
+  background: var(--aria-mint);
+  color: var(--aria-ink);
+}
+
+.instrument-card {
+  background: var(--aria-cream);
+}
+
+.instrument-card .section-title-row h3 {
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, monospace;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.instrument-button {
+  border: 2px solid var(--aria-ink);
+  color: var(--aria-ink);
+  box-shadow: 0 3px 0 rgba(17,26,38,.18);
+}
+
+.instrument-button:nth-child(6n + 1) { background: #f3acd2; }
+.instrument-button:nth-child(6n + 2) { background: #7dcce9; }
+.instrument-button:nth-child(6n + 3) { background: #ffad39; }
+.instrument-button:nth-child(6n + 4) { background: #c2a5e8; }
+.instrument-button:nth-child(6n + 5) { background: #8de4ad; }
+.instrument-button:nth-child(6n + 6) { background: #ffe162; }
+
+.instrument-button:hover {
+  filter: brightness(1.04);
+  transform: translateY(-1px);
+}
+
+.instrument-button.active {
+  background: var(--aria-yellow);
+  border: 3px solid var(--aria-ink);
+  box-shadow: 0 4px 0 var(--aria-ink);
+}
+
+.sequencer-card {
+  background: var(--aria-cream);
+  border: 4px solid var(--aria-ink);
+}
+
+.sequencer-scroll {
+  border: 3px solid var(--aria-ink);
+  background: #fffaf0;
+}
+
+.seq-corner {
+  background: var(--aria-ink);
+}
+
+.seq-label {
+  border-right: 2px solid var(--aria-ink);
+  background: #ece4d3;
+  color: var(--aria-ink);
+}
+
+.seq-step {
+  background: #f3ecdc;
+  color: var(--aria-ink);
+}
+
+.seq-cell {
+  background: #fffdf7;
+}
+
+.seq-cell.staff-line {
+  background:
+    linear-gradient(
+      to bottom,
+      transparent 47%,
+      rgba(17,26,38,.15) 47%,
+      rgba(17,26,38,.15) 53%,
+      transparent 53%
+    ),
+    #fffdf7;
+}
+
+.seq-cell.playing {
+  background: #e6f8ab;
+  box-shadow: inset 0 0 0 3px var(--aria-ink);
+}
+
+.section-strip-under-grid {
+  margin-top: 4px;
+  padding: 12px 0 2px;
+}
+
+.section-strip-label {
+  color: var(--aria-ink);
+  font-weight: 900;
+}
+
+.section-button {
+  border: 3px solid var(--aria-ink);
+  color: var(--aria-ink);
+  box-shadow: 0 3px 0 rgba(17,26,38,.18);
+}
+
+.section-button:nth-child(1) { background: var(--aria-pink); }
+.section-button:nth-child(2) { background: var(--aria-sky); }
+.section-button:nth-child(3) { background: var(--aria-orange); }
+.section-button:nth-child(4) { background: var(--aria-purple); }
+
+.section-button span,
+.section-button .tempo-badge {
+  color: #444c52;
+}
+
+.section-button.active {
+  background: var(--aria-yellow);
+  color: var(--aria-ink);
+  outline: 0;
+  box-shadow: 0 5px 0 var(--aria-ink);
+  transform: translateY(-2px);
+}
+
+.section-button.active span,
+.section-button.active .tempo-badge {
+  color: #384047;
+}
+
+.arrangement-overview { background: #96e4b0; }
+.measure-editor { background: #7fcbe8; }
+.mixer-card { background: #c1a5e6; }
+.composer-demo { background: #f1a2cb; }
+.composer-assist { background: #ffb24c; }
+.performance-tools { background: #7ccfe0; }
+.pattern-lab { background: #f3a6ce; }
+.percussion-card { background: #8fe2ad; }
+.composer-view { background: #c6aae7; }
+.song-actions { background: #ffac34; }
+
+.arrangement-overview,
+.measure-editor,
+.mixer-card,
+.composer-demo,
+.composer-assist,
+.performance-tools,
+.pattern-lab,
+.percussion-card,
+.composer-view,
+.song-actions {
+  border-color: var(--aria-ink);
+  color: var(--aria-ink);
+}
+
+.arrangement-overview h3,
+.measure-editor strong,
+.mixer-card summary,
+.composer-demo strong,
+.composer-assist strong,
+.performance-tools strong,
+.pattern-lab strong,
+.percussion-card strong,
+.composer-view strong,
+.song-actions strong {
+  color: var(--aria-ink);
+}
+
+.mixer-channel,
+.section-settings,
+.section-palette-editor,
+.section-mix-snapshot,
+.arrangement-card,
+.cloud-sync-card,
+.project-entry,
+.project-save-row {
+  border: 2px solid var(--aria-ink);
+  background: rgba(247,240,223,.88);
+  color: var(--aria-ink);
+}
+
+.arrangement-card:nth-child(1) { background: #f4afd4; }
+.arrangement-card:nth-child(2) { background: #8bd3eb; }
+.arrangement-card:nth-child(3) { background: #ffb24b; }
+.arrangement-card:nth-child(4) { background: #c5a9e8; }
+
+.arrangement-card.active {
+  background: var(--aria-yellow);
+  outline: 3px solid var(--aria-ink);
+}
+
+.percussion-label {
+  background: var(--aria-cream);
+  color: var(--aria-ink);
+}
+
+.percussion-cell {
+  background: #fffdf7;
+  color: var(--aria-ink);
+}
+
+.percussion-cell.active {
+  background: var(--aria-yellow);
+  box-shadow: inset 0 0 0 2px var(--aria-ink);
+}
+
+.live-key {
+  background: var(--aria-cream);
+  color: var(--aria-ink);
+  border: 2px solid var(--aria-ink);
+}
+
+.live-key:nth-child(4n + 1) { background: #f4acd1; }
+.live-key:nth-child(4n + 2) { background: #86d1eb; }
+.live-key:nth-child(4n + 3) { background: #91e1ad; }
+.live-key:nth-child(4n + 4) { background: #c5a8e8; }
+
+.live-key.active,
+.live-key:active {
+  background: var(--aria-yellow);
+  color: var(--aria-ink);
+}
+
+.button {
+  border: 2px solid var(--aria-ink);
+  background: #fffdf7;
+  color: var(--aria-ink);
+  box-shadow: 0 2px 0 rgba(17,26,38,.2);
+}
+
+.button.primary {
+  background: var(--aria-yellow);
+  color: var(--aria-ink);
+}
+
+.button.danger {
+  background: #ff8f91;
+  color: var(--aria-ink);
+}
+
+.file-button {
+  background: var(--aria-sky);
+}
+
+.song-actions .button:nth-child(3n + 1) { background: var(--aria-yellow); }
+.song-actions .button:nth-child(3n + 2) { background: var(--aria-sky); }
+.song-actions .button:nth-child(3n + 3) { background: var(--aria-pink); }
+
+.project-library {
+  border: 4px solid var(--aria-ink);
+  background: var(--aria-cream);
+}
+
+.cloud-sync-card {
+  background: var(--aria-mint);
+}
+
+.toy-title-card { background: var(--aria-pink); }
+.toy-card:nth-child(1) { background: var(--aria-sky); }
+.toy-card:nth-child(2) { background: var(--aria-purple); }
+
+.relay-pad:nth-child(1) { background: var(--aria-yellow); }
+.relay-pad:nth-child(2) { background: var(--aria-pink); }
+.relay-pad:nth-child(3) { background: var(--aria-mint); }
+.relay-pad:nth-child(4) { background: var(--aria-sky); }
+
+@media (max-width: 640px) {
+  body {
+    background:
+      linear-gradient(
+        to bottom,
+        var(--aria-cream) 0 72px,
+        var(--aria-ink) 72px 77px,
+        var(--aria-cyan) 77px 220px,
+        var(--aria-ink) 220px 225px,
+        var(--aria-sky) 225px 100%
+      );
+  }
+
+  .topbar {
+    min-height: 72px;
+    margin-inline: -5px;
+    padding-inline: 8px;
+  }
+
+  .primary-nav {
+    margin-inline: -5px;
+    padding: 10px 8px;
+    border-bottom-width: 4px;
+  }
+
+  .music-panel {
+    padding: 8px;
+    border-width: 3px;
+    border-radius: 24px;
+  }
+
+  .music-toolbar {
+    border-width: 3px;
+    background: var(--aria-sky);
+  }
+
+  .instrument-button {
+    border: 2px solid var(--aria-ink);
+    box-shadow: 0 2px 0 rgba(17,26,38,.18);
+  }
+
+  .sequencer-card {
+    border-width: 3px;
+  }
+
+  .section-button {
+    border-width: 2px;
+    box-shadow: 0 2px 0 rgba(17,26,38,.18);
+  }
+}
+
+/* Colorful dark mode keeps the same module identities on deeper surfaces. */
+html[data-theme="dark"] {
+  --aria-cream: #171a18;
+  --aria-cyan: #204e52;
+  --aria-sky: #25536a;
+  --aria-pink: #6f3655;
+  --aria-purple: #4d3b6a;
+  --aria-mint: #29593d;
+  --aria-orange: #6c441a;
+  --aria-yellow: #c8f84d;
+  --aria-ink: #f4f6ef;
+}
+
+html[data-theme="dark"] body {
+  background:
+    linear-gradient(
+      to bottom,
+      #171a18 0 92px,
+      #dce2d8 92px 98px,
+      #204e52 98px 320px,
+      #dce2d8 320px 326px,
+      #1c3c4d 326px 100%
+    );
+}
+
+html[data-theme="dark"] .topbar {
+  background: #171a18;
+}
+
+html[data-theme="dark"] .primary-nav {
+  background: #204e52;
+  border-bottom-color: #dce2d8;
+}
+
+html[data-theme="dark"] .music-panel {
+  border-color: #dce2d8;
+  background: #171a18;
+}
+
+html[data-theme="dark"] .music-toolbar {
+  border-color: #dce2d8;
+  background: #25536a;
+}
+
+html[data-theme="dark"] .instrument-card,
+html[data-theme="dark"] .sequencer-card {
+  border-color: #dce2d8;
+  background: #171a18;
+}
+
+html[data-theme="dark"] .instrument-button:nth-child(6n + 1) { background: #65344f; }
+html[data-theme="dark"] .instrument-button:nth-child(6n + 2) { background: #26536a; }
+html[data-theme="dark"] .instrument-button:nth-child(6n + 3) { background: #67431d; }
+html[data-theme="dark"] .instrument-button:nth-child(6n + 4) { background: #4b3a66; }
+html[data-theme="dark"] .instrument-button:nth-child(6n + 5) { background: #29573c; }
+html[data-theme="dark"] .instrument-button:nth-child(6n + 6) { background: #5b511f; }
+
+html[data-theme="dark"] .instrument-button,
+html[data-theme="dark"] .section-button {
+  border-color: #dce2d8;
+  color: #fff;
+}
+
+html[data-theme="dark"] .instrument-button.active,
+html[data-theme="dark"] .section-button.active {
+  border-color: var(--aria-yellow);
+  background: var(--aria-yellow);
+  color: #10130f;
+  box-shadow: 0 4px 0 #070807;
+}
+
+html[data-theme="dark"] .section-button:nth-child(1) { background: #6f3655; }
+html[data-theme="dark"] .section-button:nth-child(2) { background: #25536a; }
+html[data-theme="dark"] .section-button:nth-child(3) { background: #6c441a; }
+html[data-theme="dark"] .section-button:nth-child(4) { background: #4d3b6a; }
+
+html[data-theme="dark"] .section-button.active {
+  background: var(--aria-yellow);
+}
+
+html[data-theme="dark"] .arrangement-overview { background: #29593d; }
+html[data-theme="dark"] .measure-editor { background: #25536a; }
+html[data-theme="dark"] .mixer-card { background: #4d3b6a; }
+html[data-theme="dark"] .composer-demo { background: #6f3655; }
+html[data-theme="dark"] .composer-assist { background: #6c441a; }
+html[data-theme="dark"] .performance-tools { background: #25536a; }
+html[data-theme="dark"] .pattern-lab { background: #6f3655; }
+html[data-theme="dark"] .percussion-card { background: #29593d; }
+html[data-theme="dark"] .composer-view { background: #4d3b6a; }
+html[data-theme="dark"] .song-actions { background: #6c441a; }
+
+html[data-theme="dark"] .arrangement-overview,
+html[data-theme="dark"] .measure-editor,
+html[data-theme="dark"] .mixer-card,
+html[data-theme="dark"] .composer-demo,
+html[data-theme="dark"] .composer-assist,
+html[data-theme="dark"] .performance-tools,
+html[data-theme="dark"] .pattern-lab,
+html[data-theme="dark"] .percussion-card,
+html[data-theme="dark"] .composer-view,
+html[data-theme="dark"] .song-actions {
+  border-color: #dce2d8;
+  color: #f4f6ef;
+}
+
+html[data-theme="dark"] .toy-title-card { background: #6f3655; }
+html[data-theme="dark"] .toy-card:nth-child(1) { background: #25536a; }
+html[data-theme="dark"] .toy-card:nth-child(2) { background: #4d3b6a; }
