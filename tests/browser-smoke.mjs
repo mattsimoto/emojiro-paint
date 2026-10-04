@@ -54,6 +54,22 @@ async function desktopSmoke(browser) {
   const page = await context.newPage();
   await loadApp(page, errors);
 
+  const fullBleedBands = await page.evaluate(() => {
+    const header = document.querySelector(".topbar").getBoundingClientRect();
+    const nav = document.querySelector(".primary-nav").getBoundingClientRect();
+    return {
+      viewport: document.documentElement.clientWidth,
+      headerLeft: header.left,
+      headerRight: header.right,
+      navLeft: nav.left,
+      navRight: nav.right
+    };
+  });
+  assert(Math.abs(fullBleedBands.headerLeft) <= 1, "Header band should start at the desktop viewport edge");
+  assert(Math.abs(fullBleedBands.headerRight - fullBleedBands.viewport) <= 1, "Header band should span the full desktop viewport");
+  assert(Math.abs(fullBleedBands.navLeft) <= 1, "Navigation band should start at the desktop viewport edge");
+  assert(Math.abs(fullBleedBands.navRight - fullBleedBands.viewport) <= 1, "Navigation band should span the full desktop viewport");
+
   const headerGeometry = await page.evaluate(() => {
     const theme = document.querySelector("#themeToggleBtn");
     const projects = document.querySelector("#projectsBtn");
@@ -260,6 +276,22 @@ async function mobileSmoke(browser) {
   const response = await page.goto(BASE_URL, { waitUntil: "networkidle" });
   assert(response && response.ok(), "Mobile app load failed");
   await page.waitForSelector("#musicPanel.active");
+  const mobileBands = await page.evaluate(() => {
+    const header = document.querySelector(".topbar").getBoundingClientRect();
+    const nav = document.querySelector(".primary-nav").getBoundingClientRect();
+    return {
+      viewport: document.documentElement.clientWidth,
+      headerLeft: header.left,
+      headerRight: header.right,
+      navLeft: nav.left,
+      navRight: nav.right
+    };
+  });
+  assert(Math.abs(mobileBands.headerLeft) <= 1, "Mobile header band should start at the viewport edge");
+  assert(Math.abs(mobileBands.headerRight - mobileBands.viewport) <= 1, "Mobile header band should span the viewport");
+  assert(Math.abs(mobileBands.navLeft) <= 1, "Mobile navigation band should start at the viewport edge");
+  assert(Math.abs(mobileBands.navRight - mobileBands.viewport) <= 1, "Mobile navigation band should span the viewport");
+
   const mobileHeaderGeometry = await page.evaluate(() => {
     const header = document.querySelector(".topbar").getBoundingClientRect();
     const actions = document.querySelector(".top-actions").getBoundingClientRect();
