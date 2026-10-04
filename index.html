@@ -27,21 +27,27 @@
       </div>
       <div class="top-actions">
         <span id="autosaveStatus" class="autosave-status">Autosave on</span>
-        <button id="saveProjectBtn" class="button small" type="button">💾 Save</button>
-        <button id="loadProjectBtn" class="button small" type="button">📂 Load</button>
+        <button id="saveProjectBtn" class="button small legacy-quick-save" type="button">💾 Save</button>
+        <button id="loadProjectBtn" class="button small legacy-quick-save" type="button">📂 Load</button>
         <button id="projectsBtn" class="button small primary" type="button">🗃️ Projects</button>
       </div>
     </header>
 
-    <nav class="mode-tabs" aria-label="Main modes">
-      <button class="mode-tab active" data-panel="paintPanel" type="button">🎨 Paint Studio</button>
-      <button class="mode-tab" data-panel="musicPanel" type="button">🎵 Music Maker</button>
-      <button class="mode-tab" data-panel="toyPanel" type="button">🕹️ Toy Box</button>
-      <button class="mode-tab" data-panel="aboutPanel" type="button">📼 About</button>
+    <nav class="mode-tabs primary-nav" aria-label="Main modes">
+      <button class="mode-tab active music-home-tab" data-panel="musicPanel" type="button">🎵 Music</button>
+      <details id="moreModeMenu" class="more-mode-menu">
+        <summary>••• More</summary>
+        <div class="more-mode-menu-popover">
+          <button class="mode-tab secondary-mode" data-panel="paintPanel" type="button">🎨 Visuals</button>
+          <button class="mode-tab secondary-mode" data-panel="toyPanel" type="button">🕹️ Toy Box</button>
+          <button class="mode-tab secondary-mode" data-panel="aboutPanel" type="button">📼 About</button>
+          <button id="mobileProjectsBtn" class="mode-tab secondary-mode" type="button">🗃️ Projects</button>
+        </div>
+      </details>
     </nav>
 
     <main>
-      <section id="paintPanel" class="panel active" aria-labelledby="paintTitle">
+      <section id="paintPanel" class="panel" aria-labelledby="paintTitle">
         <div class="panel-heading">
           <div>
             <h2 id="paintTitle">Paint Studio</h2>
@@ -168,7 +174,7 @@
         </div>
       </section>
 
-      <section id="musicPanel" class="panel" aria-labelledby="musicTitle">
+      <section id="musicPanel" class="panel active music-panel" aria-labelledby="musicTitle">
         <div class="panel-heading">
           <div>
             <h2 id="musicTitle">Emoji Composer</h2>
@@ -180,10 +186,11 @@
         <div class="music-toolbar card">
           <div class="transport">
             <button id="playMusicBtn" class="button primary transport-button" type="button">▶ Play</button>
-            <button id="stopMusicBtn" class="button transport-button" type="button">■ Stop</button>
-            <button id="loopMusicBtn" class="button toggle-button active" type="button" aria-pressed="true">🔁 Loop</button>
+            <button id="stopMusicBtn" class="button transport-button advanced-control" type="button">■ Stop</button>
+            <button id="loopMusicBtn" class="button toggle-button active advanced-control" type="button" aria-pressed="true">🔁 Loop</button>
             <button id="undoMusicBtn" class="button" type="button">↶ Undo</button>
-            <button id="clearMusicBtn" class="button danger" type="button">🗑️ Clear</button>
+            <button id="musicToolsToggle" class="button music-tools-toggle" type="button" aria-pressed="false">☰ Tools</button>
+            <button id="clearMusicBtn" class="button danger advanced-control" type="button">🗑️ Clear</button>
           </div>
 
           <label class="range-row tempo-row">
