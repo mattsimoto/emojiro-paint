@@ -515,7 +515,7 @@
 
 .sequencer.compact {
   --cell: 30px !important;
-  grid-template-columns: 52px repeat(96, var(--cell)) !important;
+  grid-template-columns: 52px repeat(var(--visible-steps, 96), var(--cell)) !important;
 }
 
 .sequencer.compact .seq-label {
@@ -1396,7 +1396,7 @@
   .sequencer,
   .sequencer.compact {
     --cell: 27px !important;
-    grid-template-columns: 44px repeat(96, var(--cell)) !important;
+    grid-template-columns: 44px repeat(var(--visible-steps, 24), var(--cell)) !important;
   }
 
   .sequencer .seq-label,
@@ -1445,7 +1445,7 @@
   .sequencer,
   .sequencer.compact {
     --cell: 25px !important;
-    grid-template-columns: 42px repeat(96, var(--cell)) !important;
+    grid-template-columns: 42px repeat(var(--visible-steps, 24), var(--cell)) !important;
   }
 
   .sequencer .seq-label,
