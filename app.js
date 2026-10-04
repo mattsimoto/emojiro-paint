@@ -145,8 +145,287 @@
       $$(".mode-tab").forEach((tab) => tab.classList.toggle("active", tab === button));
       $$(".panel").forEach((panel) => panel.classList.toggle("active", panel.id === button.dataset.panel));
       if (button.dataset.panel !== "musicPanel") stopMusic();
+      if (button.dataset.panel !== "toyPanel") stopToyGames();
     });
   });
+
+  // -----------------------------
+  // Title Toy + Mini-games
+  // -----------------------------
+
+  const TITLE_TOY_EMOJIS = ["🎨","🎵","⭐","✨","🌈","🐶","🐱","🍄","🎮","🦆","🚀","❤️"];
+  let catchGameFrame = 0;
+  let catchGameRunning = false;
+  let catchGameStart = 0;
+  let catchLastSpawn = 0;
+  let catchLastTime = 0;
+  let catchBasketX = 320;
+  let catchDrops = [];
+  let catchScore = 0;
+  let relayTimer = 0;
+  let relayRunning = false;
+  let relayRound = 0;
+  let relayTarget = -1;
+  let relayScore = 0;
+  let relayHitThisRound = false;
+
+  function spawnTitleBurst(count = 12) {
+    const stage = $("#titleToyStage");
+    for (let i = 0; i < count; i += 1) {
+      const sprite = document.createElement("span");
+      sprite.className = "title-toy-sprite";
+      sprite.textContent = TITLE_TOY_EMOJIS[Math.floor(Math.random() * TITLE_TOY_EMOJIS.length)];
+      sprite.style.setProperty("--tx", (Math.random() * 260 - 70).toFixed(0) + "px");
+      sprite.style.setProperty("--ty", (Math.random() * 130 - 75).toFixed(0) + "px");
+      sprite.style.setProperty("--rot", (Math.random() * 540 - 270).toFixed(0) + "deg");
+      stage.appendChild(sprite);
+      setTimeout(() => sprite.remove(), 1500);
+    }
+  }
+
+  function clearTitleToy() {
+    $("#titleToyStage").innerHTML = "";
+  }
+
+  function shuffleTitleToy() {
+    $("#titleToyBtn").textContent = TITLE_TOY_EMOJIS[Math.floor(Math.random() * TITLE_TOY_EMOJIS.length)];
+    spawnTitleBurst(8);
+  }
+
+  $("#titleToyBtn").addEventListener("click", () => spawnTitleBurst(14));
+  $("#titleBurstBtn").addEventListener("click", () => spawnTitleBurst(22));
+  $("#titleShuffleBtn").addEventListener("click", shuffleTitleToy);
+  $("#titleClearBtn").addEventListener("click", clearTitleToy);
+
+  function catchBestScore() {
+    return Math.max(0, Number(localStorage.getItem("emojiro-catch-best") || 0));
+  }
+
+  function updateCatchBest() {
+    const best = Math.max(catchBestScore(), catchScore);
+    localStorage.setItem("emojiro-catch-best", String(best));
+    $("#catchBest").textContent = best;
+  }
+
+  function drawCatchGame() {
+    const canvas = $("#catchGameCanvas");
+    const gameCtx = canvas.getContext("2d");
+    gameCtx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const gradient = gameCtx.createLinearGradient(0, 0, 0, canvas.height);
+    gradient.addColorStop(0, "#dff2ff");
+    gradient.addColorStop(1, "#fff0c9");
+    gameCtx.fillStyle = gradient;
+    gameCtx.fillRect(0, 0, canvas.width, canvas.height);
+
+    gameCtx.fillStyle = "rgba(255,255,255,.65)";
+    for (let i = 0; i < 5; i += 1) {
+      gameCtx.beginPath();
+      gameCtx.arc(70 + i * 145, 52 + (i % 2) * 25, 26, 0, Math.PI * 2);
+      gameCtx.arc(95 + i * 145, 52 + (i % 2) * 25, 20, 0, Math.PI * 2);
+      gameCtx.fill();
+    }
+
+    gameCtx.textAlign = "center";
+    gameCtx.textBaseline = "middle";
+    gameCtx.font = '34px "Apple Color Emoji","Segoe UI Emoji",sans-serif';
+    catchDrops.forEach((drop) => gameCtx.fillText(drop.emoji, drop.x, drop.y));
+
+    gameCtx.fillStyle = "#2d2a32";
+    gameCtx.fillRect(catchBasketX - 50, canvas.height - 42, 100, 13);
+    gameCtx.fillStyle = "#f2a65a";
+    gameCtx.fillRect(catchBasketX - 43, canvas.height - 55, 86, 14);
+    gameCtx.font = '28px "Apple Color Emoji","Segoe UI Emoji",sans-serif';
+    gameCtx.fillText("🧺", catchBasketX, canvas.height - 32);
+  }
+
+  function finishCatchGame() {
+    catchGameRunning = false;
+    cancelAnimationFrame(catchGameFrame);
+    catchGameFrame = 0;
+    updateCatchBest();
+    $("#startCatchGameBtn").textContent = "▶ Play again";
+    $("#catchGameStatus").textContent = "Finished — score " + catchScore;
+    drawCatchGame();
+  }
+
+  function catchGameLoop(now) {
+    if (!catchGameRunning) return;
+    const canvas = $("#catchGameCanvas");
+    const dt = Math.min(.04, Math.max(.001, (now - catchLastTime) / 1000));
+    catchLastTime = now;
+
+    if (now - catchGameStart >= 30000) {
+      finishCatchGame();
+      return;
+    }
+
+    if (now - catchLastSpawn > Math.max(250, 650 - (now - catchGameStart) / 100)) {
+      const bad = Math.random() < .18;
+      const goodEmoji = ["⭐","🍎","🍓","🌸","🎁","🦋","🍩","🌈"];
+      const badEmoji = ["💀","💣","🕳️"];
+      catchDrops.push({
+        emoji: (bad ? badEmoji : goodEmoji)[Math.floor(Math.random() * (bad ? badEmoji : goodEmoji).length)],
+        bad,
+        x: 30 + Math.random() * (canvas.width - 60),
+        y: -25,
+        speed: 90 + Math.random() * 95 + (now - catchGameStart) / 800
+      });
+      catchLastSpawn = now;
+    }
+
+    catchDrops.forEach((drop) => { drop.y += drop.speed * dt; });
+    catchDrops = catchDrops.filter((drop) => {
+      if (drop.y > canvas.height - 72 && drop.y < canvas.height - 18 && Math.abs(drop.x - catchBasketX) < 58) {
+        catchScore += drop.bad ? -2 : 1;
+        catchScore = Math.max(0, catchScore);
+        $("#catchScore").textContent = catchScore;
+        return false;
+      }
+      return drop.y < canvas.height + 35;
+    });
+
+    const secondsLeft = Math.max(0, Math.ceil((30000 - (now - catchGameStart)) / 1000));
+    $("#catchGameStatus").textContent = secondsLeft + " seconds";
+    drawCatchGame();
+    catchGameFrame = requestAnimationFrame(catchGameLoop);
+  }
+
+  function startCatchGame() {
+    stopCatchGame();
+    catchScore = 0;
+    catchDrops = [];
+    catchBasketX = 320;
+    catchGameRunning = true;
+    catchGameStart = performance.now();
+    catchLastSpawn = catchGameStart;
+    catchLastTime = catchGameStart;
+    $("#catchScore").textContent = "0";
+    $("#startCatchGameBtn").textContent = "■ Restart";
+    catchGameFrame = requestAnimationFrame(catchGameLoop);
+  }
+
+  function stopCatchGame() {
+    catchGameRunning = false;
+    if (catchGameFrame) cancelAnimationFrame(catchGameFrame);
+    catchGameFrame = 0;
+  }
+
+  function moveCatchBasket(event) {
+    const canvas = $("#catchGameCanvas");
+    const rect = canvas.getBoundingClientRect();
+    const x = (event.clientX - rect.left) / rect.width * canvas.width;
+    catchBasketX = Math.max(55, Math.min(canvas.width - 55, x));
+    if (!catchGameRunning) drawCatchGame();
+  }
+
+  $("#catchGameCanvas").addEventListener("pointerdown", (event) => {
+    event.preventDefault();
+    moveCatchBasket(event);
+    $("#catchGameCanvas").setPointerCapture?.(event.pointerId);
+  });
+  $("#catchGameCanvas").addEventListener("pointermove", (event) => {
+    if (event.buttons || event.pointerType === "touch") moveCatchBasket(event);
+  });
+  $("#startCatchGameBtn").addEventListener("click", startCatchGame);
+
+  function relayBestScore() {
+    return Math.max(0, Number(localStorage.getItem("emojiro-relay-best") || 0));
+  }
+
+  function finishRelayGame() {
+    relayRunning = false;
+    clearTimeout(relayTimer);
+    relayTimer = 0;
+    $$(".relay-pad").forEach((pad) => pad.classList.remove("active","hit","miss"));
+    $("#relayMeter").style.width = "0";
+    const best = Math.max(relayBestScore(), relayScore);
+    localStorage.setItem("emojiro-relay-best", String(best));
+    $("#relayBest").textContent = best;
+    $("#startRelayBtn").textContent = "▶ Play again";
+    $("#relayStatus").textContent = "Finished — score " + relayScore;
+  }
+
+  function relayNextRound() {
+    if (!relayRunning) return;
+    if (relayRound >= 30) {
+      finishRelayGame();
+      return;
+    }
+
+    if (relayRound > 0 && !relayHitThisRound) {
+      relayScore = Math.max(0, relayScore - 1);
+      $("#relayScore").textContent = relayScore;
+    }
+
+    relayRound += 1;
+    relayHitThisRound = false;
+    relayTarget = Math.floor(Math.random() * 4);
+    $$(".relay-pad").forEach((pad, index) => {
+      pad.classList.remove("hit","miss");
+      pad.classList.toggle("active", index === relayTarget);
+    });
+
+    const pace = Math.max(360, 760 - relayRound * 10);
+    $("#relayStatus").textContent = "Round " + relayRound + " / 30";
+    const meter = $("#relayMeter");
+    meter.style.transition = "none";
+    meter.style.width = "100%";
+    requestAnimationFrame(() => {
+      meter.style.transition = "width " + pace + "ms linear";
+      meter.style.width = "0%";
+    });
+    relayTimer = setTimeout(relayNextRound, pace);
+  }
+
+  function startRelayGame() {
+    stopRelayGame();
+    ensureAudio();
+    relayScore = 0;
+    relayRound = 0;
+    relayTarget = -1;
+    relayHitThisRound = false;
+    relayRunning = true;
+    $("#relayScore").textContent = "0";
+    $("#startRelayBtn").textContent = "■ Restart";
+    relayNextRound();
+  }
+
+  function stopRelayGame() {
+    relayRunning = false;
+    clearTimeout(relayTimer);
+    relayTimer = 0;
+    $$(".relay-pad").forEach((pad) => pad.classList.remove("active","hit","miss"));
+  }
+
+  $$(".relay-pad").forEach((pad) => {
+    pad.addEventListener("click", () => {
+      if (!relayRunning || relayHitThisRound) return;
+      const lane = Number(pad.dataset.lane);
+      relayHitThisRound = true;
+      if (lane === relayTarget) {
+        relayScore += 2;
+        pad.classList.add("hit");
+        const sounds = ["star","dog","duck","game"];
+        const pitches = ["C5","G4","D5","E5"];
+        playInstrument(sounds[lane], noteToFrequency(pitches[lane]), .18);
+      } else {
+        relayScore = Math.max(0, relayScore - 1);
+        pad.classList.add("miss");
+      }
+      $("#relayScore").textContent = relayScore;
+    });
+  });
+  $("#startRelayBtn").addEventListener("click", startRelayGame);
+
+  function stopToyGames() {
+    stopCatchGame();
+    stopRelayGame();
+  }
+
+  $("#catchBest").textContent = catchBestScore();
+  $("#relayBest").textContent = relayBestScore();
+  drawCatchGame();
 
   // -----------------------------
   // Paint Studio
