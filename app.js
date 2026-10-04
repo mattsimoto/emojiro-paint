@@ -1682,6 +1682,18 @@
     return snapshot && typeof snapshot === "object" ? snapshot : instrumentMix;
   }
 
+  function mixerState(mixer, id) {
+    const source = mixer || instrumentMix;
+    const mix = source[id] || {
+      volume: 1, mute: false, solo: false, pan: 0, filter: 0, delay: 0
+    };
+    const anySolo = Object.values(source).some((entry) => entry && entry.solo);
+    return {
+      mix,
+      audible: !mix.mute && (!anySolo || mix.solo) && Number(mix.volume) > 0
+    };
+  }
+
   function normalizeMixerSnapshot(snapshot) {
     if (!snapshot || typeof snapshot !== "object") return null;
     const out = {};
@@ -3596,23 +3608,24 @@
       pig:80, duck:81, baby:52, plane:27, ship:115, car:16, heart:33
     };
     let melodicChannelIndex = 0;
-    const anySolo = Object.values(instrumentMix).some((entry) => entry && entry.solo);
 
     INSTRUMENTS.forEach((instrument) => {
       const used = sequence.some((row) => row.slice(0, songEndStep).includes(instrument.id));
       if (!used) return;
 
       const channel = instrument.id === "drum" ? 9 : channels[melodicChannelIndex++];
-      const mix = instrumentMix[instrument.id] || {
-        volume: 1, mute: false, solo: false, pan: 0, filter: 0, delay: 0
-      };
-      const audible = !mix.mute && (!anySolo || mix.solo);
-      const volume = audible ? Math.round(Math.max(0, Math.min(1, mix.volume)) * 127) : 0;
-      const pan = Math.round((Math.max(-1, Math.min(1, Number(mix.pan) || 0)) + 1) * 63.5);
-      const events = [
-        { tick: 0, order: 0, bytes: [0xB0 | channel, 7, volume] },
-        { tick: 0, order: 1, bytes: [0xB0 | channel, 10, pan] }
-      ];
+      const events = [];
+      for (let section = 0; section < SECTION_COUNT; section += 1) {
+        const step = sectionStart(section);
+        if (step >= songEndStep) break;
+        const state = mixerState(mixerForStep(step), instrument.id);
+        const volume = state.audible
+          ? Math.round(Math.max(0, Math.min(1, Number(state.mix.volume) || 0)) * 127)
+          : 0;
+        const pan = Math.round((Math.max(-1, Math.min(1, Number(state.mix.pan) || 0)) + 1) * 63.5);
+        events.push({ tick: step * PPQ, order: 0, bytes: [0xB0 | channel, 7, volume] });
+        events.push({ tick: step * PPQ, order: 1, bytes: [0xB0 | channel, 10, pan] });
+      }
       if (instrument.id !== "drum") {
         events.push({ tick: 0, order: 1, bytes: [0xC0 | channel, programMap[instrument.id] ?? 0] });
       }
@@ -3637,15 +3650,15 @@
     const percussionEvents = [];
     for (let laneIndex = 0; laneIndex < PERCUSSION_LANES.length; laneIndex += 1) {
       const lane = PERCUSSION_LANES[laneIndex];
-      const mix = instrumentMix[lane.instrument] || { volume: 1, mute: false, solo: false };
-      const audible = !mix.mute && (!anySolo || mix.solo) && Number(mix.volume) > 0;
-      if (!audible) continue;
       for (let step = 0; step < songEndStep; step += 1) {
         if (!percussionPattern[laneIndex][step]) continue;
+        const state = mixerState(mixerForStep(step), lane.instrument);
+        if (!state.audible) continue;
         const beatMs = 60000 / effectiveTempoAtStep(step);
         const humanTicks = Math.round((humanizeOffsetMs(PITCHES.length + laneIndex, step) / beatMs) * PPQ);
         const tick = step * PPQ + humanTicks;
-        percussionEvents.push({ tick, order: 3, bytes: [0x99, lane.midi, 105] });
+        const velocity = Math.max(1, Math.round(Math.max(0, Math.min(1, Number(state.mix.volume) || 0)) * 110));
+        percussionEvents.push({ tick, order: 3, bytes: [0x99, lane.midi, velocity] });
         percussionEvents.push({ tick: tick + Math.round(PPQ * .3), order: 2, bytes: [0x89, lane.midi, 0] });
       }
     }
@@ -3714,13 +3727,11 @@
     const sampleCount = Math.ceil(durationSeconds * sampleRate);
     const left = new Float32Array(sampleCount);
     const right = new Float32Array(sampleCount);
-    const anySolo = Object.values(instrumentMix).some((entry) => entry && entry.solo);
 
-    const mixVoice = (id, frequency, startSample) => {
-      const mix = instrumentMix[id] || {
-        volume: 1, mute: false, solo: false, pan: 0, filter: 0, delay: 0
-      };
-      if (mix.mute || (anySolo && !mix.solo) || Number(mix.volume) <= 0) return;
+    const mixVoice = (id, frequency, startSample, mixer) => {
+      const state = mixerState(mixer, id);
+      const mix = state.mix;
+      if (!state.audible) return;
 
       const config = offlineVoiceConfig(id, frequency);
       const voiceSamples = Math.min(sampleCount - startSample, Math.ceil(config.duration * sampleRate));
@@ -3773,12 +3784,13 @@
 
     for (let step = 0; step < songEndStep; step += 1) {
       const baseSample = Math.floor(stepStarts[step] * sampleRate);
+      const stepMixer = mixerForStep(step);
 
       for (let row = 0; row < PITCHES.length; row += 1) {
         const id = sequence[row][step];
         if (!id) continue;
         const humanSamples = Math.round(humanizeOffsetMs(row, step) / 1000 * sampleRate);
-        mixVoice(id, noteToFrequency(PITCHES[row]), baseSample + humanSamples);
+        mixVoice(id, noteToFrequency(PITCHES[row]), baseSample + humanSamples, stepMixer);
       }
 
       for (let laneIndex = 0; laneIndex < PERCUSSION_LANES.length; laneIndex += 1) {
@@ -3787,7 +3799,7 @@
         const humanSamples = Math.round(
           humanizeOffsetMs(PITCHES.length + laneIndex, step) / 1000 * sampleRate
         );
-        mixVoice(lane.instrument, noteToFrequency(lane.pitch), baseSample + humanSamples);
+        mixVoice(lane.instrument, noteToFrequency(lane.pitch), baseSample + humanSamples, stepMixer);
       }
 
       if (step % 8 === 7) await new Promise((resolve) => setTimeout(resolve, 0));
@@ -4138,17 +4150,18 @@
         drawFrameToVideoContext(exportCtx, frames[frameIndex] || frames[0], exportCanvas.width, exportCanvas.height);
 
         const baseWhen = ac.currentTime + .015;
+        const stepMixer = mixerForStep(step);
         PITCHES.forEach((pitch, row) => {
           const id = sequence[row][step];
           if (!id) return;
           const when = baseWhen + humanizeOffsetMs(row, step) / 1000;
-          playInstrument(id, noteToFrequency(pitch), Math.min(.55, beatMs / 1000 * .82), when);
+          playInstrument(id, noteToFrequency(pitch), Math.min(.55, beatMs / 1000 * .82), when, stepMixer);
         });
 
         PERCUSSION_LANES.forEach((lane, laneIndex) => {
           if (!percussionPattern[laneIndex][step]) return;
           const when = baseWhen + humanizeOffsetMs(PITCHES.length + laneIndex, step) / 1000;
-          playInstrument(lane.instrument, noteToFrequency(lane.pitch), Math.min(.45, beatMs / 1000 * .72), when);
+          playInstrument(lane.instrument, noteToFrequency(lane.pitch), Math.min(.45, beatMs / 1000 * .72), when, stepMixer);
         });
 
         await new Promise((resolve) => setTimeout(resolve, beatMs));
