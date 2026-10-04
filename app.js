@@ -1669,6 +1669,7 @@
         measureEditStep = start;
         renderSectionBar();
         renderPercussionGrid();
+        if (mobileSectionComposer()) renderSequencer();
         refreshSectionSelection();
         refreshMeasureSelection();
         const header = $('.seq-step[data-step="' + start + '"]');
@@ -2222,6 +2223,7 @@
         renderSectionBar();
         renderPercussionGrid();
         syncSectionTempoUi();
+        if (mobileSectionComposer()) renderSequencer();
         refreshSectionSelection();
         refreshMeasureSelection();
         const header = $('.seq-step[data-step="' + start + '"]');
@@ -2795,12 +2797,17 @@
     $("#liveRecordBtn").textContent = liveRecordEnabled ? "⏺ Recording" : "⏺ Record off";
   });
 
-  function applyComposerView() {
+  function mobileSectionComposer() {
+    return window.matchMedia && window.matchMedia("(max-width: 640px)").matches;
+  }
+
+  function applyComposerView(visibleSteps = SEQ_STEPS) {
     const sequencer = $("#sequencer");
     sequencer.classList.toggle("compact", composerCompact);
     sequencer.style.setProperty("--cell", composerCompact ? "30px" : composerZoom + "px");
+    sequencer.style.setProperty("--visible-steps", String(visibleSteps));
     sequencer.style.gridTemplateColumns = (composerCompact ? "52px" : "66px") +
-      " repeat(" + SEQ_STEPS + ", var(--cell))";
+      " repeat(" + visibleSteps + ", var(--cell))";
     $("#composerZoom").value = composerZoom;
     $("#composerZoom").disabled = composerCompact;
     $("#composerZoomOut").textContent = composerCompact ? "Compact" : composerZoom + " px";
@@ -2810,13 +2817,17 @@
   function renderSequencer() {
     const sequencer = $("#sequencer");
     sequencer.innerHTML = "";
-    applyComposerView();
+    const visibleStart = mobileSectionComposer() ? sectionStart() : 0;
+    const visibleEnd = mobileSectionComposer()
+      ? Math.min(SEQ_STEPS, visibleStart + SECTION_LENGTH)
+      : SEQ_STEPS;
+    applyComposerView(visibleEnd - visibleStart);
 
     const corner = document.createElement("div");
     corner.className = "seq-corner";
     sequencer.appendChild(corner);
 
-    for (let step = 0; step < SEQ_STEPS; step += 1) {
+    for (let step = visibleStart; step < visibleEnd; step += 1) {
       const header = document.createElement("button");
       header.type = "button";
       header.className = "seq-step" + (step % timeSignature === 0 ? " measure" : "") + (step === songEndStep - 1 ? " end-step" : "");
@@ -2849,7 +2860,7 @@
       label.textContent = pitch;
       sequencer.appendChild(label);
 
-      for (let step = 0; step < SEQ_STEPS; step += 1) {
+      for (let step = visibleStart; step < visibleEnd; step += 1) {
         const cell = document.createElement("button");
         cell.type = "button";
         cell.className = "seq-cell" + (step % timeSignature === 0 ? " measure" : "") + ((row + 1) % 2 === 0 ? " staff-line" : "") + (step >= songEndStep ? " after-end" : "");
@@ -2908,8 +2919,14 @@
     }
 
     const runner = $("#runner");
-    const denom = Math.max(1, songEndStep - 1);
-    runner.style.left = "calc(" + ((currentStep / denom) * 100) + "% - 14px)";
+    if (mobileSectionComposer()) {
+      const start = sectionStart();
+      const local = Math.max(0, Math.min(SECTION_LENGTH - 1, currentStep - start));
+      runner.style.left = "calc(" + ((local / Math.max(1, SECTION_LENGTH - 1)) * 100) + "% - 14px)";
+    } else {
+      const denom = Math.max(1, songEndStep - 1);
+      runner.style.left = "calc(" + ((currentStep / denom) * 100) + "% - 14px)";
+    }
 
     $$("#percussionGrid .percussion-cell").forEach((cell) => {
       cell.classList.toggle("playing", isMusicPlaying && Number(cell.dataset.step) === currentStep);
@@ -2922,6 +2939,16 @@
   }
 
   function playStep(step) {
+    if (mobileSectionComposer()) {
+      const playbackSection = Math.max(0, Math.min(SECTION_COUNT - 1, Math.floor(step / SECTION_LENGTH)));
+      if (playbackSection !== selectedSection) {
+        selectedSection = playbackSection;
+        measureEditStep = step;
+        renderSectionBar();
+        renderPercussionGrid();
+        renderSequencer();
+      }
+    }
     updateSyncedAnimationForBeat(step);
     const bpm = effectiveTempoAtStep(step);
     const beatDuration = 60 / bpm;
@@ -4876,6 +4903,14 @@
   // -----------------------------
   // Init
   // -----------------------------
+
+  const mobileComposerMedia = window.matchMedia ? window.matchMedia("(max-width: 640px)") : null;
+  if (mobileComposerMedia && mobileComposerMedia.addEventListener) {
+    mobileComposerMedia.addEventListener("change", () => {
+      composerCompact = mobileComposerMedia.matches ? true : composerCompact;
+      renderSequencer();
+    });
+  }
 
   setupNotePaintEvents();
   renderLiveKeyboard();
