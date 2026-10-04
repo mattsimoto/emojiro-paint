@@ -959,3 +959,73 @@ html[data-theme="dark"] code {
     display: none;
   }
 }
+
+
+html[data-theme="dark"] .project-library,
+html[data-theme="dark"] .project-save-row,
+html[data-theme="dark"] .project-empty {
+  border-color: #8e968b;
+  background: #171a18;
+  color: #f4f6ef;
+}
+
+html[data-theme="dark"] .project-save-row {
+  background: #1d211e;
+}
+
+html[data-theme="dark"] .project-library-section {
+  border-top-color: #596057;
+}
+
+html[data-theme="dark"] .project-entry.active {
+  border-color: var(--orange);
+  background: #29341b;
+  color: #f4f6ef;
+  outline-color: var(--orange);
+}
+
+html[data-theme="dark"] .project-entry-name,
+html[data-theme="dark"] .project-library-head,
+html[data-theme="dark"] .project-library-title,
+html[data-theme="dark"] .cloud-sync-grid label,
+html[data-theme="dark"] .song-actions label,
+html[data-theme="dark"] .section-editor-head label {
+  color: #f4f6ef;
+}
+
+html[data-theme="dark"] .project-save-row input,
+html[data-theme="dark"] .cloud-sync-grid input,
+html[data-theme="dark"] .song-actions input[type="text"],
+html[data-theme="dark"] .section-editor-head input {
+  border-color: #aeb5ab;
+  background: #101310;
+  color: #f7f8f4;
+}
+
+html[data-theme="dark"] .project-dialog::backdrop {
+  background: rgba(0,0,0,.78);
+}
+
+html[data-theme="dark"] .file-button {
+  color: #f7f8f4;
+}
+
+html[data-theme="dark"] .end-marker-help {
+  border-color: var(--orange);
+  background: #344219;
+  color: #f4f6ef;
+}
+
+html[data-theme="dark"] .section-button .tempo-badge {
+  color: #c8f84d;
+}
+
+html[data-theme="dark"] .theme-toggle .theme-toggle-icon {
+  filter: none;
+}
+
+html[data-theme="dark"] .theme-toggle[aria-pressed="true"] {
+  border-color: #c8cec4;
+  background: #222623;
+  color: #f6f8f2;
+}
