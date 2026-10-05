@@ -3912,14 +3912,14 @@
         if (!Array.isArray(savedSnapshot)) return null;
         const snapshot = {};
         INSTRUMENTS.forEach((instrument, index) => {
-          const saved = savedSnapshot[index] || [];
+          const saved = Array.isArray(savedSnapshot[index]) ? savedSnapshot[index] : null;
           snapshot[instrument.id] = {
-            volume: Math.max(0, Math.min(1, Number(saved[0]) / 100 || 0)),
-            mute: Boolean(saved[1]),
-            solo: Boolean(saved[2]),
-            pan: Math.max(-1, Math.min(1, Number(saved[3]) / 100 || 0)),
-            filter: Math.max(0, Math.min(1, Number(saved[4]) / 100 || 0)),
-            delay: Math.max(0, Math.min(1, Number(saved[5]) / 100 || 0))
+            volume: saved ? Math.max(0, Math.min(1, Number(saved[0]) / 100)) : 1,
+            mute: Boolean(saved && saved[1]),
+            solo: Boolean(saved && saved[2]),
+            pan: saved ? Math.max(-1, Math.min(1, Number(saved[3]) / 100)) : 0,
+            filter: saved ? Math.max(0, Math.min(1, Number(saved[4]) / 100)) : 0,
+            delay: saved ? Math.max(0, Math.min(1, Number(saved[5]) / 100)) : 0
           };
         });
         return snapshot;
@@ -4173,7 +4173,8 @@
       guitar:25, piano:0, sax:65, brass:56, violin:40, snare:115,
       ghost:52, robot:81, water:98, fire:127,
       voiceAh:52, voiceOoh:53, laugh:52, cry:53, scream:52, snore:53,
-      growl:52, giggle:53, sneeze:52, kiss:53, hmm:53, hey:52
+      growl:52, giggle:53, sneeze:52, kiss:53, hmm:53, hey:52,
+      accordion:21, flute:73, banjo:105, maracas:115, conga:115
     };
     let melodicChannelIndex = 0;
 
@@ -4181,7 +4182,7 @@
       const used = sequence.some((row) => row.slice(0, songEndStep).includes(instrument.id));
       if (!used) return;
 
-      const channel = instrument.id === "drum" || instrument.id === "snare"
+      const channel = ["drum","snare","maracas","conga"].includes(instrument.id)
         ? 9
         : channels[(melodicChannelIndex++) % channels.length];
       const events = [];
@@ -4210,7 +4211,11 @@
             ? 36 + ((PITCHES.length - 1 - row) % 12)
             : instrument.id === "snare"
               ? 38
-              : noteToMidi(pitch);
+              : instrument.id === "maracas"
+                ? 70
+                : instrument.id === "conga"
+                  ? 64
+                  : noteToMidi(pitch);
           events.push({ tick, order: 3, bytes: [0x90 | channel, midiNote, 100] });
           events.push({ tick: tick + noteLength, order: 2, bytes: [0x80 | channel, midiNote, 0] });
         }
@@ -4301,12 +4306,17 @@
       case "rocket": return { wave: "sawtooth", frequency: 55, gain: .16, duration: .72, bend: 4.2, noise: .16 };
       case "clock": return { wave: "square", frequency: 880, gain: .16, duration: .18 };
       case "bell": return { wave: "sine", frequency: frequency * 2, gain: .2, duration: .9, harmonic: 1.5 };
-      case "guitar": return { wave: "triangle", frequency, gain: .18, duration: .55, harmonic: 2, noise: .025 };
-      case "piano": return { wave: "triangle", frequency, gain: .2, duration: .65, harmonic: 2 };
-      case "sax": return { wave: "sawtooth", frequency, gain: .15, duration: .55, harmonic: 2 };
-      case "brass": return { wave: "sawtooth", frequency, gain: .18, duration: .52, harmonic: 2 };
-      case "violin": return { wave: "sawtooth", frequency, gain: .13, duration: .72, harmonic: 2 };
-      case "snare": return { wave: "triangle", frequency: 175, gain: .2, duration: .17, noise: .28 };
+      case "guitar": return { wave: "triangle", frequency, gain: .24, duration: 1.18, harmonic: 2, noise: .035, decay: 1.25 };
+      case "piano": return { wave: "triangle", frequency, gain: .27, duration: 1.28, harmonic: 2.01, noise: .015, decay: 1.15 };
+      case "sax": return { wave: "sawtooth", frequency, gain: .22, duration: 1.08, harmonic: 2, noise: .025, vibrato: 5.1, decay: .55, attack: .045 };
+      case "brass": return { wave: "sawtooth", frequency, gain: .25, duration: 1.02, harmonic: 2.01, vibrato: 4.6, decay: .62, attack: .035 };
+      case "violin": return { wave: "sawtooth", frequency, gain: .2, duration: 1.42, harmonic: 2, vibrato: 5.5, decay: .38, attack: .06 };
+      case "snare": return { wave: "triangle", frequency: 185, gain: .3, duration: .24, noise: .42, decay: 3.5 };
+      case "accordion": return { wave: "sawtooth", frequency, gain: .23, duration: 1.25, harmonic: 2.02, vibrato: 4.3, decay: .45, attack: .045 };
+      case "flute": return { wave: "sine", frequency, gain: .23, duration: 1.22, harmonic: 2, noise: .025, vibrato: 5.3, decay: .4, attack: .055 };
+      case "banjo": return { wave: "triangle", frequency, gain: .26, duration: .82, harmonic: 2, noise: .045, decay: 1.5 };
+      case "maracas": return { wave: "sine", frequency: 2500, gain: .09, duration: .3, noise: .58, pulse: 14, decay: 3.6 };
+      case "conga": return { wave: "sine", frequency: Math.max(115, frequency * .55), gain: .34, duration: .42, bend: .68, noise: .07, decay: 2.25 };
       case "ghost": return { wave: "sine", frequency: frequency * .7, gain: .14, duration: .85, bend: 1.65 };
       case "robot": return { wave: "square", frequency: frequency * 1.5, gain: .16, duration: .28, harmonic: 1.5 };
       case "water": return { wave: "sine", frequency: frequency * 2.8, gain: .13, duration: .32, bend: .7 };
@@ -4370,7 +4380,11 @@
       for (let i = 0; i < voiceSamples; i += 1) {
         const t = i / sampleRate;
         const progress = i / Math.max(1, voiceSamples - 1);
-        const envelope = Math.pow(1 - progress, id === "drum" ? 3.8 : 2.1) * Math.min(1, t / .008);
+        const decayPower = Number.isFinite(config.decay)
+          ? config.decay
+          : (["drum","snare","maracas","conga"].includes(id) ? 3.8 : 1.6);
+        const attackTime = Number.isFinite(config.attack) ? config.attack : .008;
+        const envelope = Math.pow(1 - progress, decayPower) * Math.min(1, t / attackTime);
         const bend = config.bend ? 1 + (config.bend - 1) * progress : 1;
         const vibrato = config.vibrato ? 1 + Math.sin(Math.PI * 2 * config.vibrato * t) * .025 : 1;
         const phase = Math.PI * 2 * config.frequency * bend * vibrato * t;
@@ -4381,7 +4395,7 @@
         }
         if (config.harmonic) sample += .28 * offlineWave("sine", phase * config.harmonic);
         if (config.noise) sample += (Math.random() * 2 - 1) * config.noise;
-        sample *= config.gain * volume * envelope;
+        sample *= config.gain * volume * envelope * OFFLINE_GAIN_BOOST;
 
         if (filterAmount > .005) {
           filteredSample += alpha * (sample - filteredSample);
