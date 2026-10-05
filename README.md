@@ -17,7 +17,7 @@ Emojiro Paint is a touch-friendly browser creativity toy inspired by classic con
 - Play toggles playback on/off, removing the need for a permanent separate Stop control
 - On phones, the staff renders one 24-beat section at a time instead of the full 96-beat song
 - Selecting Section A–D changes the mobile staff immediately; playback follows sections automatically
-- Mobile instruments use a compact horizontally scrollable emoji strip
+- Instruments use a single horizontally scrollable emoji strip on desktop and mobile
 - The transport stays visible while composing on mobile
 
 ### 🎨 Paint Studio
@@ -53,7 +53,10 @@ Emojiro Paint is a touch-friendly browser creativity toy inspired by classic con
 - 96-beat staff-style composer spanning B3–G5
 - Identity-based examples include 🐶 Dog Bark, 🐮 Cow Moo, 🐸 Frog Croak, 🐘 Elephant Trumpet, 🐝 Bee Buzz, 🐺 Wolf Howl, 🚂 Train Chug, 🚁 Helicopter Chop, 🚀 Rocket Launch, 🚢 Ship Horn, 🚗 Car Horn, 🔔 Bell Ring, 🎸 Guitar Strum, 🎹 Piano Key, 🎻 Violin Bow, 🥁 Snare Drum, 👻 Ghost Wail, and 💧 Water Drop
 - Face-vocal bank: 😀 Vocal Ah, 😮 Vocal Ooh, 😂 Laugh, 😭 Cry, 😱 Scream, 😴 Snore, 😡 Growl, 🤭 Giggle, 🤧 Sneeze, 😘 Kiss, 🤔 Hmm, and 🥳 Hey!
-- 55 emoji instruments with identity-based synthesized voices spanning animals, vehicles, bells, musical instruments, game sounds, effects, and face-emoji vocals
+- Fuller audio engine with stronger gain, longer note windows, richer instrument envelopes, and matched WAV/video rendering
+- More realistic instrument synthesis: plucked-string guitar/banjo, harmonic piano decay, breathier sax/flute, vibrato violin, layered brass/accordion, and dedicated maracas/hand-drum voices
+- Added 🪗 Accordion, 🪈 Flute, 🪕 Banjo, 🪇 Maracas, and 🪘 Hand Drum
+- 60 emoji instruments with identity-based synthesized voices spanning animals, vehicles, bells, musical instruments, game sounds, effects, and face-emoji vocals
 - Tempo from 40–480 BPM
 - 3/4 and 4/4 time signatures
 - Up to three simultaneous notes per beat
