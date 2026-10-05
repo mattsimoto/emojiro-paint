@@ -2092,3 +2092,84 @@ html[data-theme="dark"] .primary-nav {
     padding-top: 12px;
   }
 }
+
+
+/* UNIVERSAL INSTRUMENT STRIP */
+.instrument-bank {
+  display: flex !important;
+  grid-template-columns: none !important;
+  flex-wrap: nowrap !important;
+  gap: 7px;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 3px 2px 9px;
+  scroll-snap-type: x proximity;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--aria-ink) transparent;
+  -webkit-overflow-scrolling: touch;
+}
+
+.instrument-bank::-webkit-scrollbar {
+  height: 7px;
+}
+
+.instrument-bank::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.instrument-bank::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: var(--aria-ink);
+}
+
+.instrument-button {
+  flex: 0 0 82px !important;
+  width: 82px !important;
+  min-width: 82px !important;
+  min-height: 70px;
+  padding: 7px 5px;
+  scroll-snap-align: start;
+}
+
+.instrument-button .emoji {
+  display: block;
+  margin: 0 0 4px;
+  font-size: 29px;
+  line-height: 1;
+}
+
+.instrument-button .instrument-name {
+  display: block;
+  overflow: hidden;
+  font-size: 9px;
+  line-height: 1.05;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .instrument-bank {
+    gap: 5px;
+    padding-bottom: 7px;
+  }
+
+  .instrument-button {
+    flex-basis: 48px !important;
+    width: 48px !important;
+    min-width: 48px !important;
+    min-height: 47px;
+    padding: 4px;
+  }
+
+  .instrument-button .emoji {
+    margin: 0;
+    font-size: 26px;
+  }
+
+  .instrument-button .instrument-name {
+    display: none;
+  }
+}
