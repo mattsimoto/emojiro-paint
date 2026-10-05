@@ -87,7 +87,13 @@
     { id: "sneeze", emoji: "🤧", name: "Sneeze", type: "sneeze" },
     { id: "kiss", emoji: "😘", name: "Kiss", type: "kiss" },
     { id: "hmm", emoji: "🤔", name: "Hmm", type: "hmm" },
-    { id: "hey", emoji: "🥳", name: "Hey!", type: "hey" }
+    { id: "hey", emoji: "🥳", name: "Hey!", type: "hey" },
+
+    { id: "accordion", emoji: "🪗", name: "Accordion", type: "accordion" },
+    { id: "flute", emoji: "🪈", name: "Flute", type: "flute" },
+    { id: "banjo", emoji: "🪕", name: "Banjo", type: "banjo" },
+    { id: "maracas", emoji: "🪇", name: "Maracas", type: "maracas" },
+    { id: "conga", emoji: "🪘", name: "Hand Drum", type: "conga" }
   ];
 
   const PITCHES = ["G5", "F5", "E5", "D5", "C5", "B4", "A4", "G4", "F4", "E4", "D4", "C4", "B3"];
@@ -1810,6 +1816,37 @@
     return INSTRUMENTS.find((instrument) => instrument.id === id);
   }
 
+  const LIVE_GAIN_BOOST = 1.5;
+  const OFFLINE_GAIN_BOOST = 1.4;
+
+  function scaledVoiceGain(gainValue) {
+    return Math.max(
+      0.0001,
+      Math.min(0.42, Number(gainValue || 0) * activeMixMultiplier * LIVE_GAIN_BOOST)
+    );
+  }
+
+  function effectiveVoiceDuration(type, duration) {
+    const base = Math.max(0.01, Number(duration) || 0.28);
+    const musical = {
+      guitar: [0.9, 1.65],
+      piano: [1.0, 1.7],
+      sax: [0.9, 1.55],
+      brass: [0.82, 1.45],
+      violin: [1.05, 1.8],
+      accordion: [0.95, 1.65],
+      flute: [0.95, 1.65],
+      banjo: [0.72, 1.35],
+      bell: [0.8, 1.35],
+      star: [0.75, 1.3],
+      ship: [0.85, 1.25],
+      whale: [1.2, 1.4]
+    };
+    const rule = musical[type];
+    if (rule) return Math.max(rule[0], base * rule[1]);
+    return Math.max(0.36, base * 1.18);
+  }
+
   function ensureAudio() {
     if (!audioCtx) {
       const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -1838,7 +1875,7 @@
     const gain = ac.createGain();
     gain.gain.setValueAtTime(0.0001, when);
     gain.gain.exponentialRampToValueAtTime(
-      Math.max(0.0001, gainValue * activeMixMultiplier),
+      scaledVoiceGain(gainValue),
       when + Math.min(.02, Math.max(.005, duration * .18))
     );
     gain.gain.exponentialRampToValueAtTime(0.0001, when + duration);
@@ -1914,6 +1951,83 @@
     src.start(when);
   }
 
+  function sustainedTone(
+    wave,
+    frequency,
+    when,
+    duration,
+    gainValue,
+    { attack = 0.045, sustain = 0.72, vibrato = 0, vibratoDepth = 0, detune = 0 } = {}
+  ) {
+    const ac = ensureAudio();
+    const osc = ac.createOscillator();
+    const gain = connectGain(gainValue, when, duration);
+    const peak = scaledVoiceGain(gainValue);
+    const attackEnd = when + Math.min(duration * 0.3, attack);
+    const releaseStart = when + Math.max(attack + 0.03, duration * 0.72);
+
+    gain.gain.cancelScheduledValues(when);
+    gain.gain.setValueAtTime(0.0001, when);
+    gain.gain.exponentialRampToValueAtTime(peak, attackEnd);
+    gain.gain.setValueAtTime(Math.max(0.0001, peak * sustain), releaseStart);
+    gain.gain.exponentialRampToValueAtTime(0.0001, when + duration);
+
+    osc.type = wave;
+    osc.frequency.setValueAtTime(Math.max(25, frequency), when);
+    osc.detune.setValueAtTime(detune, when);
+    osc.connect(gain);
+
+    let lfo = null;
+    let lfoGain = null;
+    if (vibrato > 0 && vibratoDepth > 0) {
+      lfo = ac.createOscillator();
+      lfoGain = ac.createGain();
+      lfo.frequency.setValueAtTime(vibrato, when);
+      lfoGain.gain.setValueAtTime(vibratoDepth, when);
+      lfo.connect(lfoGain);
+      lfoGain.connect(osc.detune);
+      lfo.start(when);
+      lfo.stop(when + duration + 0.04);
+    }
+
+    osc.start(when);
+    osc.stop(when + duration + 0.04);
+    return osc;
+  }
+
+  function pluckedString(frequency, when, duration, gainValue = 0.12, damping = 0.996, brightness = 0.75) {
+    const ac = ensureAudio();
+    const sampleRate = ac.sampleRate;
+    const length = Math.max(1, Math.ceil(sampleRate * duration));
+    const buffer = ac.createBuffer(1, length, sampleRate);
+    const data = buffer.getChannelData(0);
+    const period = Math.max(2, Math.round(sampleRate / Math.max(45, frequency)));
+
+    for (let i = 0; i < Math.min(period, length); i += 1) {
+      data[i] = (Math.random() * 2 - 1) * (0.55 + brightness * 0.45);
+    }
+    for (let i = period; i < length; i += 1) {
+      const a = data[i - period];
+      const b = data[Math.min(length - 1, i - period + 1)];
+      data[i] = (a + b) * 0.5 * damping;
+    }
+
+    const source = ac.createBufferSource();
+    const filter = ac.createBiquadFilter();
+    const gain = connectGain(gainValue, when, duration);
+    filter.type = "lowpass";
+    filter.frequency.setValueAtTime(
+      Math.min(11000, Math.max(1700, frequency * (5 + brightness * 8))),
+      when
+    );
+    filter.Q.setValueAtTime(0.55, when);
+    source.buffer = buffer;
+    source.connect(filter);
+    filter.connect(gain);
+    source.start(when);
+    return source;
+  }
+
   const VOCAL_FORMANTS = {
     ah: [800, 1150],
     ooh: [350, 900],
@@ -1957,6 +2071,7 @@
     const start = when == null ? ac.currentTime : when;
     const instrument = instrumentById(id);
     if (!instrument) return;
+    duration = effectiveVoiceDuration(instrument.type, duration);
     const mixer = mixerOverride || instrumentMix;
     const mix = mixer[id] || {
       volume: 1, mute: false, solo: false, pan: 0, filter: 0, delay: 0
@@ -2146,31 +2261,85 @@
         break;
 
       case "guitar":
-        tone("triangle", frequency, start, duration * .9, .065);
-        tone("sine", frequency * 2, start + .008, duration * .6, .025);
-        noiseBurst(start, .025, .018, "highpass", 2600);
+        pluckedString(frequency, start, duration * 1.35, .13, .997, .7);
+        pluckedString(frequency * 2, start + .012, duration * .72, .036, .994, .58);
+        noiseBurst(start, .028, .022, "highpass", 3000);
         break;
       case "piano":
-        tone("triangle", frequency, start, duration * 1.05, .07);
-        tone("sine", frequency * 2, start, duration * .65, .03);
-        tone("sine", frequency * 3, start, duration * .4, .015);
+        tone("triangle", frequency, start, duration * 1.35, .085);
+        tone("sine", frequency * 2, start + .004, duration * 1.05, .038);
+        tone("sine", frequency * 3.01, start + .006, duration * .78, .022);
+        tone("sine", frequency * 4.05, start + .008, duration * .5, .012);
+        noiseBurst(start, .018, .01, "highpass", 3600);
         break;
       case "sax":
-        tone("sawtooth", frequency, start, duration * .9, .05);
-        tone("square", frequency * 2, start, duration * .72, .018);
+        sustainedTone("sawtooth", frequency, start, duration * 1.15, .06, {
+          attack: .055, sustain: .78, vibrato: 5.1, vibratoDepth: 7
+        });
+        sustainedTone("triangle", frequency * 2, start, duration * 1.05, .022, {
+          attack: .06, sustain: .7, vibrato: 5.1, vibratoDepth: 5, detune: -3
+        });
+        noiseBurst(start, duration * .75, .012, "bandpass", 1800);
         break;
       case "brass":
-        tone("sawtooth", frequency, start, duration * .82, .065);
-        tone("triangle", frequency * 2, start, duration * .7, .03);
+        sustainedTone("sawtooth", frequency, start, duration, .072, {
+          attack: .035, sustain: .82, vibrato: 4.6, vibratoDepth: 3, detune: -4
+        });
+        sustainedTone("sawtooth", frequency, start, duration * .96, .045, {
+          attack: .04, sustain: .72, vibrato: 4.6, vibratoDepth: 3, detune: 5
+        });
+        tone("triangle", frequency * 2, start, duration * .75, .026);
         break;
       case "violin":
-        tone("sawtooth", frequency, start, duration * 1.15, .045);
-        tone("triangle", frequency * 2, start, duration * 1.05, .02);
+        sustainedTone("sawtooth", frequency, start, duration * 1.18, .054, {
+          attack: .08, sustain: .84, vibrato: 5.5, vibratoDepth: 12, detune: -3
+        });
+        sustainedTone("triangle", frequency * 2, start + .01, duration * 1.1, .024, {
+          attack: .07, sustain: .72, vibrato: 5.5, vibratoDepth: 9, detune: 4
+        });
         break;
       case "snare":
-        noiseBurst(start, .14, .11, "highpass", 1200);
-        tone("triangle", 175, start, .1, .045);
+        noiseBurst(start, .21, .145, "highpass", 1350);
+        noiseBurst(start, .11, .07, "bandpass", 4200);
+        tone("triangle", 185, start, .13, .06);
         break;
+      case "accordion":
+        sustainedTone("sawtooth", frequency, start, duration * 1.08, .055, {
+          attack: .055, sustain: .82, vibrato: 4.3, vibratoDepth: 3, detune: -7
+        });
+        sustainedTone("sawtooth", frequency, start, duration * 1.08, .052, {
+          attack: .055, sustain: .82, vibrato: 4.3, vibratoDepth: 3, detune: 7
+        });
+        tone("sine", frequency * 2, start, duration * .85, .018);
+        break;
+      case "flute":
+        sustainedTone("sine", frequency, start, duration * 1.1, .07, {
+          attack: .075, sustain: .88, vibrato: 5.3, vibratoDepth: 9
+        });
+        sustainedTone("triangle", frequency * 2, start, duration * .95, .018, {
+          attack: .08, sustain: .7, vibrato: 5.3, vibratoDepth: 7
+        });
+        noiseBurst(start, duration * .7, .009, "highpass", 2500);
+        break;
+      case "banjo":
+        pluckedString(frequency, start, duration, .145, .9925, .96);
+        pluckedString(frequency * 2, start + .008, duration * .55, .032, .989, .95);
+        noiseBurst(start, .022, .028, "highpass", 4200);
+        break;
+      case "maracas":
+        [0, .07, .14].forEach((offset, index) => {
+          noiseBurst(start + offset, .075, .085 - index * .012, "highpass", 3600);
+        });
+        break;
+      case "conga": {
+        const conga = tone("sine", Math.max(115, frequency * .55), start, .32, .14);
+        conga.frequency.exponentialRampToValueAtTime(
+          Math.max(78, frequency * .36),
+          start + .32
+        );
+        noiseBurst(start, .045, .035, "bandpass", 1800);
+        break;
+      }
 
       case "ghost": {
         const wail = tone("sine", frequency * .7, start, duration * 1.25, .055);
@@ -2380,10 +2549,19 @@
         if (!sectionPaletteAllows(instrument.id)) return;
         selectedInstrument = instrument.id;
         renderInstrumentBank();
-        playInstrument(instrument.id, 440, .22);
+        playInstrument(instrument.id, 440, .5);
       });
       bank.appendChild(button);
     });
+
+    if (!bank.dataset.wheelStrip) {
+      bank.dataset.wheelStrip = "true";
+      bank.addEventListener("wheel", (event) => {
+        if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+        event.preventDefault();
+        bank.scrollLeft += event.deltaY;
+      }, { passive: false });
+    }
   }
 
   function renderSectionSoundSettings() {
@@ -3274,14 +3452,26 @@
       const id = sequence[row][step];
       if (id) {
         const when = now + humanizeOffsetMs(row, step) / 1000;
-        playInstrument(id, noteToFrequency(pitch), Math.min(.55, beatDuration * .82), when, stepMixer);
+        playInstrument(
+          id,
+          noteToFrequency(pitch),
+          Math.min(.78, Math.max(.36, beatDuration * 1.08)),
+          when,
+          stepMixer
+        );
       }
     });
 
     PERCUSSION_LANES.forEach((lane, laneIndex) => {
       if (!percussionPattern[laneIndex][step]) return;
       const when = now + humanizeOffsetMs(PITCHES.length + laneIndex, step) / 1000;
-      playInstrument(lane.instrument, noteToFrequency(lane.pitch), Math.min(.45, beatDuration * .72), when, stepMixer);
+      playInstrument(
+        lane.instrument,
+        noteToFrequency(lane.pitch),
+        Math.min(.58, Math.max(.3, beatDuration * .86)),
+        when,
+        stepMixer
+      );
     });
   }
 
